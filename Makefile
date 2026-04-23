@@ -4,7 +4,8 @@ CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -I include
 RM			= rm -f
 
 SRCS		= main.cpp \
-				src/config_parser.cpp
+				src/config_parser.cpp \
+				src/server.cpp
 
 OBJDIR	= obj
 OBJS	= $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))

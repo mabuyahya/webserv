@@ -1,3 +1,6 @@
+#ifndef COMMON_HPP
+#define COMMON_HPP
+
 enum HttpResponseCode {
 	OK = 200,
 	BadRequest = 400,
@@ -10,3 +13,5 @@ enum HTTPMethod {
 	POST,
 	DELETE
 };
+
+#endif

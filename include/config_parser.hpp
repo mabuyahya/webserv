@@ -1,3 +1,6 @@
+#ifndef CONFIG_PARSER_HPP
+#define CONFIG_PARSER_HPP
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -41,3 +44,5 @@ class ConfigParser
 
 		std::vector<ServerConfig> parseConfig();
 };
+
+#endif
