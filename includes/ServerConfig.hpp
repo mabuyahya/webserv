@@ -6,34 +6,37 @@
 
 class ServerConfig {
 private:
-    std::vector<int>                    _ports;
+    int                    _port;
     std::string                         _host;
-    std::vector<std::string>            _serverNames;
+    std::string             _serverName;
     size_t                              _clientMaxBodySize;
     std::map<int, std::string>          _errorPages;
     std::vector<LocationConfig>         _locations;
+    
 
 public:
     ServerConfig() : _host("0.0.0.0") {}
     ~ServerConfig() {}
     // Getters
-    const std::vector<int>& getPorts() const;
+    int getPort() const;
     const std::string& getHost() const;
-    const std::vector<std::string>& getServerNames() const;
+    const std::string& getServerName() const;
     size_t getClientMaxBodySize() const;
     const std::map<int, std::string>& getErrorPages() const;
     const std::vector<LocationConfig>& getLocations() const;
     // setters
-    void setPorts(const std::vector<int>& ports);
+    void setPort(int port);
     void setHost(const std::string& host);
-    void setServerNames(const std::vector<std::string>& serverNames);
+    void setServerName(const std::string& serverName);
     void setClientMaxBodySize(size_t size);
     void setErrorPages(const std::map<int, std::string>& errorPages);
+    void addErrorPage(int statusCode, const std::string& page);
+    void addLocation(const LocationConfig& location);
     void setLocations(const std::vector<LocationConfig>& locations);
     //validation
-    void validatePorts(const std::vector<int>& ports);
+    void validatePort(int port);
     // void validateHost(const std::string& host);
-    void validateServerNames(const std::vector<std::string>& serverNames);
+    void validateServerName(const std::string& serverName);
     void validateClientMaxBodySize(size_t size);
     void validateErrorPages(const std::map<int, std::string>& errorPages);
     // void validateLocations(const std::vector<LocationConfig>& locations);

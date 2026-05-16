@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 class LocationConfig {
+    // root ./webroot;
     private:
         std::string                         _path;          
         std::string                         _root;          
@@ -17,7 +18,7 @@ class LocationConfig {
     public:
         LocationConfig();
         ~LocationConfig();
-
+        
         void setPath(const std::string& path);
         void setRoot(const std::string& root);
         void setIndex(const std::string& index);
