@@ -14,6 +14,8 @@ class LocationConfig {
         std::string                         _uploadDir;
         std::string                         _cgiExtension;
         std::string                         _cgiPath;
+        std::pair<int , std::string>         _return;
+
 
     public:
         LocationConfig();
@@ -27,6 +29,7 @@ class LocationConfig {
         void setUploadDir(const std::string& uploadDir);
         void setCgiExtension(const std::string& cgiExtension);
         void setCgiPath(const std::string& cgiPath);
+        void setReturn(int statusCode, const std::string& url);
 
         const std::string& getPath() const;
         const std::string& getRoot() const;
@@ -36,6 +39,7 @@ class LocationConfig {
         const std::string& getUploadDir() const;
         const std::string& getCgiExtension() const;
         const std::string& getCgiPath() const;
+        const std::pair<int, std::string>& getReturn() const;
 
     private:
         void validateAllowedMethods(const std::vector<std::string>& methods);
@@ -47,6 +51,7 @@ class LocationConfig {
         void validateIndex(const std::string& index);
         void validatePath(const std::string& path);
         void validateAutoIndex(bool autoIndex);
+        void validateReturn(int statusCode, const std::string& url);
 };
 // /website/mabuyahy
 // #location /uploads {

@@ -1,6 +1,15 @@
 #include "includes/LocationConfig.hpp"
 
-LocationConfig::LocationConfig() : _autoIndex(false) {}
+LocationConfig::LocationConfig() : _autoIndex(false) {
+    _path = "";
+    _root = "";
+    _index = "";
+    _allowedMethods.clear();
+    _uploadDir = "";
+    _cgiExtension = "";
+    _cgiPath = "";
+    _return = std::make_pair(0, "");
+}
 LocationConfig::~LocationConfig() {}
 
 const std::string& LocationConfig::getPath() const {
@@ -26,6 +35,10 @@ const std::string& LocationConfig::getCgiExtension() const {
 }
 const std::string& LocationConfig::getCgiPath() const {
     return _cgiPath;
+}
+
+const std::pair<int, std::string>& LocationConfig::getReturn() const {
+    return _return;
 }
 
 void LocationConfig::setPath(const std::string& path) {
@@ -58,6 +71,11 @@ void LocationConfig::setCgiExtension(const std::string& cgiExtension) {
 void LocationConfig::setCgiPath(const std::string& cgiPath) {
     validateCgiPath(cgiPath);
     _cgiPath = cgiPath;
+}
+
+void LocationConfig::setReturn(int statusCode, const std::string& url) {
+    validateReturn(statusCode, url);
+    _return = std::make_pair(statusCode, url);
 }
 
 void LocationConfig::validateAllowedMethods(const std::vector<std::string>& methods) {
@@ -102,7 +120,8 @@ void LocationConfig::validateUploadDir(const std::string& uploadDir) {
 }
 
 void LocationConfig::validateRoot(const std::string& root) {
-    if (root.empty()) {
+
+    if (!root || root.empty()) {
         throw std::invalid_argument("Root directory cannot be empty");
     }
 }
@@ -116,5 +135,14 @@ void LocationConfig::validateIndex(const std::string& index) {
 void LocationConfig::validatePath(const std::string& path) {
     if (path.empty()) {
         throw std::invalid_argument("Path cannot be empty");
+    }
+}
+
+void LocationConfig::validateReturn(int statusCode, const std::string& url) {
+    if (statusCode < 300 || statusCode > 399) {
+        throw std::invalid_argument("Return status code must be a redirection code (300-399)");
+    }
+    if (url.empty()) {
+        throw std::invalid_argument("Return URL cannot be empty");
     }
 }

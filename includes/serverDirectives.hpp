@@ -15,7 +15,7 @@ class serverDirectives {
         std::string _serverName;
         std::vector<locationDirectives> _locations;
         std::string client_max_body_size;
-        std::string _errorPage;
+        std::vector<std::string> _errorPages;
 
 
 
@@ -26,18 +26,18 @@ class serverDirectives {
         void setServerName(const std::string& serverName);
         void setRoot(const std::string& root);
         void setIndex(const std::string& index);
-        void setErrorPage(const std::string& errorPage);
         void setCgiExtension(const std::string& cgiExtension);
         void setCgiPath(const std::string& cgiPath);
         void setAutoIndex(const std::string& autoIndex);
         void setAllowedMethods(const std::string& allowedMethods);
         void setClientMaxBodySize(const std::string& client_max_body_size);
         void addLocation(const locationDirectives& location);
+        void addErrorPage(const std::string& errorPage);
         const std::string& getListen() const;
         const std::string& getServerName() const;
         const std::string& getRoot() const;
         const std::string& getIndex() const;
-        const std::string& getErrorPage() const;
+        const std::vector<std::string>& getErrorPages() const;
         const std::string& getCgiExtension() const;
         const std::string& getCgiPath() const;
         const std::string& getAutoIndex() const;

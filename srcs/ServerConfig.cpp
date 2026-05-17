@@ -1,5 +1,7 @@
 #include "includes/ServerConfig.hpp"
 
+ServerConfig::ServerConfig() : _port(80), _host("0.0.0.0"), _serverName("default"), _clientMaxBodySize(1024 * 1024) {}
+ServerConfig::~ServerConfig() {}
 int ServerConfig::getPort() const {
     return _port;
 }

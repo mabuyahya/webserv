@@ -11,6 +11,7 @@ class locationDirectives {
         std::string _uploadDir;
         std::string _cgiExtension;
         std::string _cgiPath;
+        std::string _return;
 
     public:
         locationDirectives();
@@ -23,6 +24,7 @@ class locationDirectives {
         void setUploadDir(const std::string& uploadDir);
         void setCgiExtension(const std::string& cgiExtension);
         void setCgiPath(const std::string& cgiPath);
+        void setReturn(const std::string& returnDirective);
         const std::string& getPath() const;
         const std::string& getRoot() const;
         const std::string& getIndex() const;
@@ -31,5 +33,6 @@ class locationDirectives {
         const std::string& getUploadDir() const;
         const std::string& getCgiExtension() const;
         const std::string& getCgiPath() const;
+        const std::string& getReturn() const;
 
 };
