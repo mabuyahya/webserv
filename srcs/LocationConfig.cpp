@@ -1,4 +1,4 @@
-#include "includes/LocationConfig.hpp"
+#include "../includes/LocationConfig.hpp"
 
 LocationConfig::LocationConfig() : _autoIndex(false) {
     _path = "";
@@ -86,11 +86,13 @@ void LocationConfig::validateAllowedMethods(const std::vector<std::string>& meth
 }
 
 void LocationConfig::validateAllowedMethod(const std::string& method) {
-    static const std::vector<std::string> validMethods = {"GET", "POST", "DELETE"};
-    for (size_t i = 0; i < validMethods.size(); ++i) {
-        if (method == validMethods[i]) {
+    const char* validMethods[] = {"GET", "POST", "DELETE", NULL};
+    size_t i = 0;
+    while (validMethods[i] != NULL) {
+        if (method == std::string(validMethods[i])) {
             return;
         }
+        ++i;
     }
     throw std::invalid_argument("Invalid HTTP method: " + method);
 }
@@ -121,7 +123,7 @@ void LocationConfig::validateUploadDir(const std::string& uploadDir) {
 
 void LocationConfig::validateRoot(const std::string& root) {
 
-    if (!root || root.empty()) {
+    if (root.empty()) {
         throw std::invalid_argument("Root directory cannot be empty");
     }
 }

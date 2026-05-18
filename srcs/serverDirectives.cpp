@@ -1,4 +1,5 @@
-#include "includes/serverDirectives.hpp"
+#include "../includes/serverDirectives.hpp"
+
 serverDirectives::serverDirectives() {
     _listen = "";
     _serverName = "";
@@ -6,9 +7,7 @@ serverDirectives::serverDirectives() {
     _index = "";
     _autoIndex = "off";
     _allowedMethods = "GET";
-    client_max_body_size = "";
-    _cgiExtension = "";
-    _cgiPath = "";
+    _clientMaxBodySize = "";
 }
 serverDirectives::~serverDirectives() {}
 void serverDirectives::setListen(const std::string& listen) {
@@ -26,20 +25,14 @@ void serverDirectives::setIndex(const std::string& index) {
 void serverDirectives::addErrorPage(const std::string& errorPage) {
     _errorPages.push_back(errorPage);
 }
-void serverDirectives::setCgiExtension(const std::string& cgiExtension) {
-    _cgiExtension = cgiExtension;
-}
-void serverDirectives::setCgiPath(const std::string& cgiPath) {
-    _cgiPath = cgiPath;
-}
 void serverDirectives::setAutoIndex(const std::string& autoIndex) {
     _autoIndex = autoIndex;
 }
 void serverDirectives::setAllowedMethods(const std::string& allowedMethods) {
     _allowedMethods = allowedMethods;
 }
-void serverDirectives::setClientMaxBodySize(const std::string& client_max_body_size) {
-    this->client_max_body_size = client_max_body_size;
+void serverDirectives::setClientMaxBodySize(const std::string& clientMaxBodySize) {
+    _clientMaxBodySize = clientMaxBodySize;
 }
 void serverDirectives::addLocation(const locationDirectives& location) {
     _locations.push_back(location);
@@ -59,20 +52,14 @@ const std::string& serverDirectives::getIndex() const {
 const std::vector<std::string>& serverDirectives::getErrorPages() const {
     return _errorPages;
 }
-const std::string& serverDirectives::getCgiExtension() const {
-    return _cgiExtension;
-}
-const std::string& serverDirectives::getCgiPath() const {
-    return _cgiPath;
-}
 const std::string& serverDirectives::getAutoIndex() const {
     return _autoIndex;
 }
 const std::string& serverDirectives::getAllowedMethods() const {
     return _allowedMethods;
-}  
+}
 const std::string& serverDirectives::getClientMaxBodySize() const {
-    return client_max_body_size;
+    return _clientMaxBodySize;
 }
 const std::vector<locationDirectives>& serverDirectives::getLocations() const {
     return _locations;

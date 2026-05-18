@@ -16,7 +16,7 @@ private:
 
 public:
     ServerConfig();
-    ~ServerConfig()
+    ~ServerConfig();
     // Getters
     int getPort() const;
     const std::string& getHost() const;

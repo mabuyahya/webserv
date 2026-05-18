@@ -1,5 +1,6 @@
 #pragma once 
 #include "ServerConfig.hpp"
+#include "serverDirectives.hpp"
 #include  <fstream>
 
 enum LINE_KIND {
@@ -9,8 +10,7 @@ enum LINE_KIND {
     NORMAL,
     EMPTY,
     UNKNOWN
-}
-
+};
 
 class ConfigParser {
 private:
@@ -21,4 +21,5 @@ public:
     ConfigParser(const std::string& path);
     void parse();
     std::vector<ServerConfig> getServers() const;
+     ServerConfig parse_server_directives(const serverDirectives& s_directives);
 };

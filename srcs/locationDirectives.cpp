@@ -1,4 +1,4 @@
-#include "includes/LocationDirectives.hpp"
+#include "../includes/locationDirectives.hpp"
 
 locationDirectives::locationDirectives() {
     _path = "";
