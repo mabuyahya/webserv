@@ -1,6 +1,18 @@
 #include <iostream>
 #include "includes/ConfigParser.hpp"
 
+static void printAllowedMethods(const std::vector<std::string>& methods) {
+    if (methods.empty())
+        return;
+    std::cout << "      Allowed Methods: ";
+    for (size_t i = 0; i < methods.size(); ++i) {
+        if (i > 0)
+            std::cout << " ";
+        std::cout << methods[i];
+    }
+    std::cout << std::endl;
+}
+
 int main(int argc, char** argv) {
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <config_file>" << std::endl;
@@ -27,6 +39,16 @@ int main(int argc, char** argv) {
                 std::cout << "      Root: " << loc.getRoot() << std::endl;
                 std::cout << "      Index: " << loc.getIndex() << std::endl;
                 std::cout << "      AutoIndex: " << (loc.getAutoIndex() ? "on" : "off") << std::endl;
+                printAllowedMethods(loc.getAllowedMethods());
+                if (!loc.getUploadDir().empty()) {
+                    std::cout << "      Upload Dir: " << loc.getUploadDir() << std::endl;
+                }
+                if (!loc.getCgiExtension().empty() || !loc.getCgiPath().empty()) {
+                    std::cout << "      CGI: " << loc.getCgiExtension() << " " << loc.getCgiPath() << std::endl;
+                }
+                if (loc.getReturn().first != 0 || !loc.getReturn().second.empty()) {
+                    std::cout << "      Return: " << loc.getReturn().first << " " << loc.getReturn().second << std::endl;
+                }
             }
         }
     } catch (const std::exception& e) {
