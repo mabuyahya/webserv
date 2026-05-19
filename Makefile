@@ -1,26 +1,45 @@
-NAME		= webserv
-CXX			= c++
-CXXFLAGS	= -Wall -Wextra -Werror -std=c++98
-RM			= rm -f
+NAME= webserv
+CXX= c++
+CXXFLAGS= -Wall -Wextra -Werror -std=c++98
+RM= rm -f
 
-SRCS		= main.cpp \
+OBJDIR= obj
 
-OBJDIR	= obj
-OBJS	= $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
+OBJS= $(OBJDIR)/main.o \
+		$(OBJDIR)/ConfigParser.o \
+		$(OBJDIR)/ServerConfig.o \
+		$(OBJDIR)/LocationConfig.o \
+		$(OBJDIR)/serverDirectives.o \
+		$(OBJDIR)/locationDirectives.o
 
-all: $(NAME)
+all: $(OBJDIR) $(NAME)
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
-$(OBJDIR)/%.o: %.cpp | $(OBJDIR)
+$(OBJDIR)/main.o: main.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/ConfigParser.o: srcs/ConfigParser.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/ServerConfig.o: srcs/ServerConfig.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/LocationConfig.o: srcs/LocationConfig.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/serverDirectives.o: srcs/serverDirectives.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/locationDirectives.o: srcs/locationDirectives.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 clean:
-	$(RM) $(OBJS)
+	$(RM) -r $(OBJDIR)
 
 fclean: clean
 	$(RM) $(NAME)
