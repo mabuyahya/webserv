@@ -69,6 +69,18 @@ static size_t my_stoul(const std::string& str) {
     return strtoul(str.c_str(), NULL, 10);
 }
 
+static void checkIfAllMondatoryLocationDirectivesSet(const LocationConfig& locConfig) {
+    if (locConfig.getPath().empty()) {
+        throw std::runtime_error("Path directive is required in location block");
+    }
+    if (locConfig.getRoot().empty()) {
+        throw std::runtime_error("Root directive is required in location block :" + locConfig.getPath());
+    }
+    if (locConfig.getIndex().empty()) {
+        throw std::runtime_error("Index directive is required in location block :" + locConfig.getPath());
+    }
+}
+
 ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_directives) {
     ServerConfig config;
 
@@ -169,10 +181,13 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
             locConfig.setCgiExtension(locDir.getCgiExtension());
             locConfig.setCgiPath(locDir.getCgiPath());
         }
+        checkIfAllMondatoryLocationDirectivesSet(locConfig);
         config.addLocation(locConfig);
     }
     return config;
 }
+
+
 
 void ConfigParser::parse() {
     std::ifstream file(_configFile.c_str());
