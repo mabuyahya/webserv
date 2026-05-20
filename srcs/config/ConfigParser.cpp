@@ -1,6 +1,6 @@
-#include "../includes/ConfigParser.hpp"
-#include "../includes/serverDirectives.hpp"
-#include "../includes/locationDirectives.hpp"
+#include "../../includes/config/ConfigParser.hpp"
+#include "../../includes/config/serverDirectives.hpp"
+#include "../../includes/config/locationDirectives.hpp"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -78,6 +78,25 @@ static void checkIfAllMondatoryLocationDirectivesSet(const LocationConfig& locCo
     }
     if (locConfig.getIndex().empty()) {
         throw std::runtime_error("Index directive is required in location block :" + locConfig.getPath());
+    }
+}
+
+static bool hasAllowedMethod(const LocationConfig& locConfig, const std::string& method) {
+    const std::vector<std::string>& allowedMethods = locConfig.getAllowedMethods();
+
+    for (size_t i = 0; i < allowedMethods.size(); ++i) {
+        if (allowedMethods[i] == method)
+            return true;
+    }
+    return false;
+}
+
+static void checkPostLocationHasBodyHandler(const LocationConfig& locConfig) {
+    bool hasCgi = !locConfig.getCgiExtension().empty() && !locConfig.getCgiPath().empty();
+    bool hasUploadDir = !locConfig.getUploadDir().empty();
+
+    if (hasAllowedMethod(locConfig, "POST") && !hasCgi && !hasUploadDir) {
+        throw std::runtime_error("Location block '" + locConfig.getPath() + "' allows POST but has no cgi or upload_dir directive");
     }
 }
 
@@ -182,6 +201,7 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
             locConfig.setCgiPath(locDir.getCgiPath());
         }
         checkIfAllMondatoryLocationDirectivesSet(locConfig);
+        checkPostLocationHasBodyHandler(locConfig);
         config.addLocation(locConfig);
     }
     return config;

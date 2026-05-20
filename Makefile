@@ -20,19 +20,19 @@ $(NAME): $(OBJS)
 $(OBJDIR)/main.o: main.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/ConfigParser.o: srcs/ConfigParser.cpp
+$(OBJDIR)/ConfigParser.o: srcs/config/ConfigParser.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/ServerConfig.o: srcs/ServerConfig.cpp
+$(OBJDIR)/ServerConfig.o: srcs/config/ServerConfig.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/LocationConfig.o: srcs/LocationConfig.cpp
+$(OBJDIR)/LocationConfig.o: srcs/config/LocationConfig.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/serverDirectives.o: srcs/serverDirectives.cpp
+$(OBJDIR)/serverDirectives.o: srcs/config/serverDirectives.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/locationDirectives.o: srcs/locationDirectives.cpp
+$(OBJDIR)/locationDirectives.o: srcs/config/locationDirectives.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJDIR):

@@ -1,4 +1,4 @@
-#include "../includes/LocationConfig.hpp"
+#include "../../includes/config/LocationConfig.hpp"
 
 LocationConfig::LocationConfig() : _autoIndex(false) {
     _path = "";

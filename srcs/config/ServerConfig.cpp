@@ -1,4 +1,4 @@
-#include "../includes/ServerConfig.hpp"
+#include "../../includes/config/ServerConfig.hpp"
 
 ServerConfig::ServerConfig() : _port(80), _host("0.0.0.0"), _serverName("default"), _clientMaxBodySize(1024 * 1024) {}
 #include <sstream>

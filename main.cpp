@@ -1,5 +1,5 @@
 #include <iostream>
-#include "includes/ConfigParser.hpp"
+#include "includes/config/ConfigParser.hpp"
 
 static void printAllowedMethods(const std::vector<std::string>& methods) {
     if (methods.empty())
