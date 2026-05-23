@@ -165,4 +165,9 @@ void ServerManager::handleClientRead(int client_fd) {
 
     client.updateActivity();
     client.getRequest().feedData(buffer, bytesRead);
+    if (client.getRequest().isComplete()) {
+        modifyEpoll(client_fd, EPOLLOUT);
+    } else if (client.getRequest().hasError()) {
+        modifyEpoll(client_fd, EPOLLOUT);
+    }
 }

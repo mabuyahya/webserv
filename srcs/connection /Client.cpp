@@ -3,6 +3,7 @@
 
 Client::Client(int fd, const ServerConfig* config)
     : _socketFd(fd), _serverConfig(config), _lastActivityTime(time(NULL)), _state(READING_REQUEST) {
+    _request = HttpRequest(config); // Initialize an empty request
     memset(&_address, 0, sizeof(_address));
 }
 

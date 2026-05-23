@@ -1,3 +1,9 @@
+#pragma once
+#include <string>
+#include <map>
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+
 enum ClientState {
     READING_REQUEST,
     PROCESSING_CGI,// New state for CGI processing

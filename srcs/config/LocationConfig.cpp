@@ -6,6 +6,7 @@ LocationConfig::LocationConfig() : _autoIndex(false) {
     _index = "";
     _allowedMethods.clear();
     _uploadDir = "";
+    _hasUploadDir = false;
     _cgiExtension = "";
     _cgiPath = "";
     _return = std::make_pair(0, "");

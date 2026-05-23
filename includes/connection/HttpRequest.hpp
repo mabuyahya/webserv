@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 #include <map>
-
+#include <vector>
+#include "" 
 
 enum RequestState {
     REQ_HEADERS,
@@ -27,12 +28,14 @@ private:
     int                                 _uploadFileFd; 
     bool                                _isChunked;
 
+    std::vector<char>                      _bodyBuffer; // For storing body data if needed (e.g., for small requests or chunked data assembly)
+
     void    parseRequestLine();
     void    parseHeaders();
     bool    processChunkedData(const char* buffer, size_t length);
 
 public:
-    HttpRequest();
+    HttpRequest(const ServerConfig* config);
     void    feedData(const char* buffer, size_t length); // Called by ServerManager on READ event
     
     bool    isComplete() const;

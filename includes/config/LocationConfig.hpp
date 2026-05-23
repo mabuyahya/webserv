@@ -11,6 +11,7 @@ class LocationConfig {
         std::string                         _index;         
         bool                                _autoIndex;     
         std::vector<std::string>            _allowedMethods;
+        bool                               _hasUploadDir;
         std::string                         _uploadDir;
         std::string                         _cgiExtension;
         std::string                         _cgiPath;
