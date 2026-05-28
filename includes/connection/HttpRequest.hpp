@@ -2,7 +2,7 @@
 #include <string>
 #include <map>
 #include <vector>
-#include "" 
+#include "../../includes/config/ServerConfig.hpp"
 
 enum RequestState {
     REQ_HEADERS,
@@ -27,12 +27,19 @@ private:
     // For file uploads streaming to disk
     int                                 _uploadFileFd; 
     bool                                _isChunked;
+    const ServerConfig*                 _serverConfig;
+    std::string                         _chunkBuffer;
 
     std::vector<char>                      _bodyBuffer; // For storing body data if needed (e.g., for small requests or chunked data assembly)
 
     void    parseRequestLine();
     void    parseHeaders();
-    bool    processChunkedData(const char* buffer, size_t length);
+    void    processNormalBody(const char* data, size_t len);
+    void    processChunkedData(const char* buffer, size_t length);
+    bool    writeBodyData(const char* data, size_t len);
+    bool    openUploadFile();
+    bool    shouldUploadBody() const;
+    void    finishBody();
 
 public:
     HttpRequest(const ServerConfig* config);

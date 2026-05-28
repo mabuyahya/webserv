@@ -1,4 +1,44 @@
 #include "HttpRequest.hpp"
+#include <algorithm>
+#include <cerrno>
+#include <cstdlib>
+#include <fcntl.h>
+#include <limits>
+#include <unistd.h>
+
+static bool parseChunkSize(const std::string& line, size_t& chunkSize) {
+    std::string sizePart = line.substr(0, line.find(';'));
+    if (sizePart.empty()) {
+        return false;
+    }
+
+    errno = 0;
+    char* end = NULL;
+    unsigned long value = std::strtoul(sizePart.c_str(), &end, 16);
+    if (errno != 0 || end == sizePart.c_str() || *end != '\0') {
+        return false;
+    }
+    if (value > std::numeric_limits<size_t>::max()) {
+        return false;
+    }
+    chunkSize = static_cast<size_t>(value);
+    return true;
+}
+
+static bool parseDecimalSize(const std::string& text, size_t& size) {
+    if (text.empty())
+        return false;
+
+    errno = 0;
+    char* end = NULL;
+    unsigned long value = std::strtoul(text.c_str(), &end, 10);
+    if (errno != 0 || end == text.c_str() || *end != '\0')
+        return false;
+    if (value > std::numeric_limits<size_t>::max())
+        return false;
+    size = static_cast<size_t>(value);
+    return true;
+}
 
 HttpRequest::HttpRequest(const ServerConfig* config): _state(REQ_HEADERS), _contentLength(0), _bodyBytesRead(0), _uploadFileFd(-1), _isChunked(false), _serverConfig(config) {  
 }
@@ -60,7 +100,10 @@ void HttpRequest::parseHeaders() {
 
             // Check for Content-Length and Transfer-Encoding
             if (name == "Content-Length") {
-                _contentLength = std::stoul(value);
+                if (!parseDecimalSize(value, _contentLength)) {
+                    _state = REQ_ERROR;
+                    return;
+                }
             } else if (name == "Transfer-Encoding" && value == "chunked") {
                 _isChunked = true;
             }
@@ -79,36 +122,13 @@ void HttpRequest::processNormalBody(const char* data, size_t len) {
     if (bodyBytesToRead == 0) {
         return; // No more body data needed
     }
-    if(!_serverConfig->getLocationConfigs()[i]._hasUploadDir) 
-    {
-        _bodyBuffer.insert(_bodyBuffer.end(), data, data + bodyBytesToRead);
-    }
-    else if (_uploadFileFd == -1) {
-        for (size_t  i = 0; i < _serverConfig->getLocationConfigs().size(); i++) {
-            if (_uri.find(_serverConfig->getLocationConfigs()[i].getPath()) == 0) {
-                if (_serverConfig->getLocationConfigs()[i].getUploadDir() != "") {
-                    _uri = _serverConfig->getLocationConfigs()[i].getUploadDir() + "/" + _uri.substr(_serverConfig->getLocationConfigs()[i].getPath().size());
-                }
-                break;
-            }
-        }
 
-        _uploadFileFd = open((_uri).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-        if (_uploadFileFd < 0) {
-            _state = REQ_ERROR; 
-            return;
-        }
-    } else {
-        ssize_t written = write(_uploadFileFd, data, bodyBytesToRead);
-        if (written < 0) {
-            _state = REQ_ERROR; 
-            return;
-        }
-    }
+    if (!writeBodyData(data, bodyBytesToRead))
+        return;
 
     _bodyBytesRead += bodyBytesToRead;
     if (_bodyBytesRead >= _contentLength) {
-        _state = REQ_COMPLETE;
+        finishBody();
     }
 }
 
@@ -122,54 +142,120 @@ void HttpRequest::processNormalBody(const char* data, size_t len) {
 // \r\n
 
 void HttpRequest::processChunkedData(const char* buffer, size_t length) {
-    // This is a simplified implementation. A real implementation would need to handle chunk extensions and trailers.
-    size_t pos = 0;
-    while (pos < length) {
-        size_t lineEnd = std::string(buffer + pos).find("\r\n");
-        if (lineEnd == std::string::npos) {
-            break; // Wait for more data
-        }
-        // this function create a string from first param (string) and second param (size_t) is the length of the string to create
-        // std::string str(std::string, size_t length);
-        std::string chunkSizeStr(buffer + pos, lineEnd);
-        size_t chunkSize = std::stoul(chunkSizeStr, nullptr, 16);
-        if (chunkSize == 0) {
-            _state = REQ_COMPLETE; // Last chunk
+    _chunkBuffer.append(buffer, length);
+
+    while (_state == REQ_BODY_CHUNKED) {
+        size_t lineEnd = _chunkBuffer.find("\r\n");
+        if (lineEnd == std::string::npos)
+            return;
+
+        size_t chunkSize = 0;
+        if (!parseChunkSize(_chunkBuffer.substr(0, lineEnd), chunkSize)) {
+            _state = REQ_ERROR;
             return;
         }
-        pos += lineEnd + 2; // Move past chunk size line
 
-        if (pos + chunkSize > length) {
-            break; // Wait for more data
-        }
-
-        if (_serverConfig.getLocationConfigs()[i]._hasUploadDir) {
-            if (_uploadFileFd == -1) {
-                for (size_t  i = 0; i < _serverConfig->getLocationConfigs().size(); i++) {
-                    if (_uri.find(_serverConfig->getLocationConfigs()[i].getPath()) == 0) {
-                        if (_serverConfig->getLocationConfigs()[i].getUploadDir() != "") {
-                            _uri = _serverConfig->getLocationConfigs()[i].getUploadDir() + "/" + _uri.substr(_serverConfig->getLocationConfigs()[i].getPath().size());
-                        }
-                        break;
-                    }
-                }
-
-                _uploadFileFd = open((_uri).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-                if (_uploadFileFd < 0) {
-                    _state = REQ_ERROR; 
-                    return;
-                }
-            }
-            ssize_t written = write(_uploadFileFd, buffer + pos, chunkSize);
-            if (written < 0) {
-                _state = REQ_ERROR; 
+        size_t dataStart = lineEnd + 2;
+        if (chunkSize == 0) {
+            if (_chunkBuffer.size() < dataStart + 2)
+                return;
+            if (_chunkBuffer.compare(dataStart, 2, "\r\n") != 0) {
+                _state = REQ_ERROR;
                 return;
             }
-        } else {
-             _
-        _bodyBuffer.insert(_bodyBuffer.end(), buffer + pos, buffer + pos + chunkSize);
-        pos += chunkSize + 2; // Move past chunk data and trailing \r\n
+            _chunkBuffer.erase(0, dataStart + 2);
+            finishBody();
+            return;
+        }
+
+        if (_chunkBuffer.size() < dataStart + chunkSize + 2)
+            return;
+        if (_chunkBuffer.compare(dataStart + chunkSize, 2, "\r\n") != 0) {
+            _state = REQ_ERROR;
+            return;
+        }
+
+        if (!writeBodyData(_chunkBuffer.data() + dataStart, chunkSize))
+            return;
+
+        _bodyBytesRead += chunkSize;
+        _chunkBuffer.erase(0, dataStart + chunkSize + 2);
     }
+}
+
+bool HttpRequest::shouldUploadBody() const {
+    if (_serverConfig == NULL)
+        return false;
+    try {
+        const LocationConfig* location = _serverConfig->matchLocation(_uri);
+        return location != NULL && location->hasUploadDir();
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+bool HttpRequest::openUploadFile() {
+    if (_uploadFileFd != -1)
+        return true;
+    if (_serverConfig == NULL) {
+        _state = REQ_ERROR;
+        return false;
+    }
+
+    const LocationConfig* location = NULL;
+    try {
+        location = _serverConfig->matchLocation(_uri);
+    } catch (const std::exception&) {
+        _state = REQ_ERROR;
+        return false;
+    }
+
+    std::string suffix = _uri.substr(location->getPath().size());
+    while (!suffix.empty() && suffix[0] == '/')
+        suffix.erase(0, 1);
+    if (suffix.empty())
+        suffix = "upload_body";
+
+    std::string path = location->getUploadDir();
+    if (!path.empty() && path[path.size() - 1] != '/')
+        path += "/";
+    path += suffix;
+
+    _uploadFileFd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    if (_uploadFileFd < 0) {
+        _state = REQ_ERROR;
+        return false;
+    }
+    return true;
+}
+
+bool HttpRequest::writeBodyData(const char* data, size_t len) {
+    if (!shouldUploadBody()) {
+        _bodyBuffer.insert(_bodyBuffer.end(), data, data + len);
+        return true;
+    }
+
+    if (!openUploadFile())
+        return false;
+
+    size_t writtenTotal = 0;
+    while (writtenTotal < len) {
+        ssize_t written = write(_uploadFileFd, data + writtenTotal, len - writtenTotal);
+        if (written <= 0) {
+            _state = REQ_ERROR;
+            return false;
+        }
+        writtenTotal += static_cast<size_t>(written);
+    }
+    return true;
+}
+
+void HttpRequest::finishBody() {
+    if (_uploadFileFd != -1) {
+        close(_uploadFileFd);
+        _uploadFileFd = -1;
+    }
+    _state = REQ_COMPLETE;
 }
 
 void HttpRequest::feedData(const char* buffer, size_t length) {

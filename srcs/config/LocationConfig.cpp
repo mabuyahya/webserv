@@ -31,6 +31,9 @@ const std::vector<std::string>& LocationConfig::getAllowedMethods() const {
 const std::string& LocationConfig::getUploadDir() const {
     return _uploadDir;
 }
+bool LocationConfig::hasUploadDir() const {
+    return _hasUploadDir;
+}
 const std::string& LocationConfig::getCgiExtension() const {
     return _cgiExtension;
 }
@@ -64,6 +67,7 @@ void LocationConfig::setAllowedMethods(const std::vector<std::string>& methods) 
 void LocationConfig::setUploadDir(const std::string& uploadDir) {
     validateUploadDir(uploadDir);
     _uploadDir = uploadDir;
+    _hasUploadDir = true;
 }
 void LocationConfig::setCgiExtension(const std::string& cgiExtension) {
     validateCgiExtension(cgiExtension);

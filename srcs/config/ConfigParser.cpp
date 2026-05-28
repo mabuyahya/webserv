@@ -183,9 +183,7 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
 
         // Location-only directives
         if (!locDir.getUploadDir().empty()) {
-            
             locConfig.setUploadDir(locDir.getUploadDir());
-            locConfig._hasUploadDir = true;
         }
         if (!locDir.getReturn().empty()) {
             int statusCode;

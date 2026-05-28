@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <map>
+#include <sys/types.h>
 #include "HttpRequest.hpp"
 #include "LocationConfig.hpp"
 

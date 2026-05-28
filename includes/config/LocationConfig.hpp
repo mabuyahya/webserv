@@ -38,6 +38,7 @@ class LocationConfig {
         bool getAutoIndex() const;
         const std::vector<std::string>& getAllowedMethods() const;
         const std::string& getUploadDir() const;
+        bool hasUploadDir() const;
         const std::string& getCgiExtension() const;
         const std::string& getCgiPath() const;
         const std::pair<int, std::string>& getReturn() const;

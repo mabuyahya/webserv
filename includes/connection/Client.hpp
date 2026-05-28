@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <map>
+#include <ctime>
+#include <netinet/in.h>
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 
