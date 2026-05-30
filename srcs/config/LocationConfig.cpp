@@ -1,4 +1,4 @@
-#include "../includes/LocationConfig.hpp"
+#include "../../includes/config/LocationConfig.hpp"
 
 LocationConfig::LocationConfig() : _autoIndex(false) {
     _path = "";
@@ -6,6 +6,7 @@ LocationConfig::LocationConfig() : _autoIndex(false) {
     _index = "";
     _allowedMethods.clear();
     _uploadDir = "";
+    _hasUploadDir = false;
     _cgiExtension = "";
     _cgiPath = "";
     _return = std::make_pair(0, "");
@@ -29,6 +30,9 @@ const std::vector<std::string>& LocationConfig::getAllowedMethods() const {
 }
 const std::string& LocationConfig::getUploadDir() const {
     return _uploadDir;
+}
+bool LocationConfig::hasUploadDir() const {
+    return _hasUploadDir;
 }
 const std::string& LocationConfig::getCgiExtension() const {
     return _cgiExtension;
@@ -63,6 +67,7 @@ void LocationConfig::setAllowedMethods(const std::vector<std::string>& methods) 
 void LocationConfig::setUploadDir(const std::string& uploadDir) {
     validateUploadDir(uploadDir);
     _uploadDir = uploadDir;
+    _hasUploadDir = true;
 }
 void LocationConfig::setCgiExtension(const std::string& cgiExtension) {
     validateCgiExtension(cgiExtension);

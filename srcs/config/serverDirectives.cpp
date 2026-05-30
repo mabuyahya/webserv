@@ -1,4 +1,4 @@
-#include "../includes/serverDirectives.hpp"
+#include "../../includes/config/serverDirectives.hpp"
 
 serverDirectives::serverDirectives() {
     _listen = "";

@@ -1,12 +1,12 @@
-#include "../includes/ConfigParser.hpp"
+#include "../../includes/config/ConfigParser.hpp"
+#include "../../includes/config/serverDirectives.hpp"
+#include "../../includes/config/locationDirectives.hpp"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <cstdlib>
 
 ConfigParser::ConfigParser(const std::string& path) : _configFile(path) {}
-#include "../includes/serverDirectives.hpp"
-#include "../includes/locationDirectives.hpp"
-#include <cstdlib>
 
 std::vector<ServerConfig> ConfigParser::getServers() const {
     return _servers;
@@ -61,29 +61,43 @@ static bool ends_with(const std::string& str, const std::string& suffix)
     return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
-static std::string trim_semicolon(std::vector<std::string>& tokens)
-{
-    if (tokens.empty())
-        return "";
-    
-    std::string lastToken = tokens.back();
-    if (lastToken == ";") {
-        tokens.pop_back();
-    } else if (ends_with(lastToken, ";")) {
-        lastToken = lastToken.substr(0, lastToken.length() - 1);
-        tokens.back() = lastToken;
-    } else {
-        throw std::runtime_error("Missing semicolon at the end of directive");
-    }
-    return lastToken;
-}
-
 static int my_stoi(const std::string& str) {
     return atoi(str.c_str());
 }
 
 static size_t my_stoul(const std::string& str) {
     return strtoul(str.c_str(), NULL, 10);
+}
+
+static void checkIfAllMondatoryLocationDirectivesSet(const LocationConfig& locConfig) {
+    if (locConfig.getPath().empty()) {
+        throw std::runtime_error("Path directive is required in location block");
+    }
+    if (locConfig.getRoot().empty()) {
+        throw std::runtime_error("Root directive is required in location block :" + locConfig.getPath());
+    }
+    if (locConfig.getIndex().empty()) {
+        throw std::runtime_error("Index directive is required in location block :" + locConfig.getPath());
+    }
+}
+
+static bool hasAllowedMethod(const LocationConfig& locConfig, const std::string& method) {
+    const std::vector<std::string>& allowedMethods = locConfig.getAllowedMethods();
+
+    for (size_t i = 0; i < allowedMethods.size(); ++i) {
+        if (allowedMethods[i] == method)
+            return true;
+    }
+    return false;
+}
+
+static void checkPostLocationHasBodyHandler(const LocationConfig& locConfig) {
+    bool hasCgi = !locConfig.getCgiExtension().empty() && !locConfig.getCgiPath().empty();
+    bool hasUploadDir = !locConfig.getUploadDir().empty();
+
+    if (hasAllowedMethod(locConfig, "POST") && !hasCgi && !hasUploadDir) {
+        throw std::runtime_error("Location block '" + locConfig.getPath() + "' allows POST but has no cgi or upload_dir directive");
+    }
 }
 
 ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_directives) {
@@ -117,6 +131,8 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
         config.setClientMaxBodySize(my_stoul(s_directives.getClientMaxBodySize()));
     }
 
+    // Parse error_page directive
+    for (size_t i = 0; i < s_directives.getErrorPages().size(); ++i) {
         std::vector<std::string> errorParts = split(s_directives.getErrorPages()[i], " ");
         if (errorParts.size() != 2) {
             throw std::runtime_error("Invalid error_page directive: " + s_directives.getErrorPages()[i]);
@@ -184,10 +200,14 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
             locConfig.setCgiExtension(locDir.getCgiExtension());
             locConfig.setCgiPath(locDir.getCgiPath());
         }
+        checkIfAllMondatoryLocationDirectivesSet(locConfig);
+        checkPostLocationHasBodyHandler(locConfig);
         config.addLocation(locConfig);
     }
     return config;
 }
+
+
 
 void ConfigParser::parse() {
     std::ifstream file(_configFile.c_str());
@@ -238,8 +258,14 @@ void ConfigParser::parse() {
                     s_directives.setServerName(blockTokens[1]);
                 } else if (blockTokens.size() == 2 && blockTokens[0] == "root") {
                     s_directives.setRoot(blockTokens[1]);
-                } else if (blockTokens.size() == 2 && blockTokens[0] == "index") {
-                    s_directives.setIndex(blockTokens[1]);
+                } else if (blockTokens.size() >= 2 && blockTokens[0] == "index") {
+                    std::string indexValue;
+                    for (size_t i = 1; i < blockTokens.size(); ++i) {
+                        if (i > 1)
+                            indexValue += " ";
+                        indexValue += blockTokens[i];
+                    }
+                    s_directives.setIndex(indexValue);
                 } else if (blockTokens.size() >= 2 && blockTokens[0] == "error_page") {
                     if (blockTokens.size() != 3) {
                         throw std::runtime_error("Invalid error_page directive: " + blockLine);
@@ -259,9 +285,9 @@ void ConfigParser::parse() {
                     for (size_t i = 1; i < blockTokens.size(); ++i) {
                         allowedMethods += blockTokens[i] + " ";
                     }
-                        if (!allowedMethods.empty()) {
-                            allowedMethods = allowedMethods.substr(0, allowedMethods.length() - 1);
-                        }
+                    if (!allowedMethods.empty()) {
+                        allowedMethods = allowedMethods.substr(0, allowedMethods.length() - 1);
+                    }
                     s_directives.setAllowedMethods(allowedMethods);
                 } else if (blockTokens.size() == 2 && blockTokens[0] == "client_max_body_size") {
                     s_directives.setClientMaxBodySize(blockTokens[1]);
@@ -276,11 +302,12 @@ void ConfigParser::parse() {
                     while (std::getline(file, locLine)) {
                         std::vector<std::string> locTokens = split(locLine, " \t");
                         
-                        if (locTokens.empty())
+                            if (locTokens.empty()) {
+                                continue;
+                            }
+                            if (starts_with(locTokens[0], "#"))
                             continue;
-                        if (starts_with(locTokens[0], "#"))
-                            continue;
-                        if (locLine == "}") {
+                            if (locTokens.size() == 1 && locTokens[0] == "}") {
                             break;
                         }
 
@@ -298,8 +325,14 @@ void ConfigParser::parse() {
 
                         if (locTokens.size() == 2 && locTokens[0] == "root") {
                             loc_directives.setRoot(locTokens[1]);
-                        } else if (locTokens.size() == 2 && locTokens[0] == "index") {
-                            loc_directives.setIndex(locTokens[1]);
+                        } else if (locTokens.size() >= 2 && locTokens[0] == "index") {
+                            std::string indexValue;
+                            for (size_t i = 1; i < locTokens.size(); ++i) {
+                                if (i > 1)
+                                    indexValue += " ";
+                                indexValue += locTokens[i];
+                            }
+                            loc_directives.setIndex(indexValue);
                         } else if (locTokens.size() == 2 && locTokens[0] == "autoindex") {
                             if (locTokens[1] != "on" && locTokens[1] != "off") {
                                 throw std::runtime_error("Invalid autoindex value in location: " + locTokens[1]);
@@ -313,9 +346,9 @@ void ConfigParser::parse() {
                             for (size_t i = 1; i < locTokens.size(); ++i) {
                                 allowedMethods += locTokens[i] + " ";
                             }
-                                if (!allowedMethods.empty()) {
-                                    allowedMethods = allowedMethods.substr(0, allowedMethods.length() - 1);
-                                }
+                            if (!allowedMethods.empty()) {
+                                allowedMethods = allowedMethods.substr(0, allowedMethods.length() - 1);
+                            }
                             loc_directives.setAllowedMethods(allowedMethods);
                         } else if (locTokens.size() == 2 && locTokens[0] == "upload_dir") {
                             loc_directives.setUploadDir(locTokens[1]);
