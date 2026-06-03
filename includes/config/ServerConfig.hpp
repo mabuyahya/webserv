@@ -12,7 +12,7 @@ private:
     size_t                              _clientMaxBodySize;
     std::map<int, std::string>          _errorPages;
     std::vector<LocationConfig>         _locations;
-    
+
 
 public:
     ServerConfig();
