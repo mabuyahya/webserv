@@ -21,6 +21,7 @@ private:
     std::map<std::string, std::string>  _headers; // e.g., "Host" -> "example.com"
     
     RequestState                        _state;
+    int                                 _errorCode; // For storing specific error codes if needed (e.g., 400 for bad request)
     size_t                              _contentLength;
     size_t                              _bodyBytesRead;
     
@@ -59,4 +60,5 @@ public:
     size_t getBodyBytesRead() const;
     int getuploadFileFd() const;
     bool getisChunked() const;
+    int getErrorCode() const;
 };

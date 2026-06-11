@@ -232,6 +232,11 @@ bool HttpRequest::openUploadFile() {
 bool HttpRequest::writeBodyData(const char* data, size_t len) {
     if (!shouldUploadBody()) {
         _bodyBuffer.insert(_bodyBuffer.end(), data, data + len);
+        if (_bodyBuffer.size() > _serverConfig->getClientMaxBodySize()) {
+            _state = REQ_ERROR;
+            _errorCode = 413;
+            return false;
+        }
         return true;
     }
 
@@ -348,4 +353,8 @@ int HttpRequest::getuploadFileFd() const {
 }
 bool HttpRequest::getisChunked() const {
     return _isChunked;
+}
+
+int HttpRequest::getErrorCode() const {
+    return _errorCode;
 }

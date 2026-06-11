@@ -22,6 +22,7 @@ private:
     CgiHandler                          _cgi;
 
     void    buildErrorPage(int code, const ServerConfig* config);
+    void    handleDirectory(const std::string& path, const ServerConfig* config);
     void    buildDirectoryListing(const std::string& path);
     void    formatHeaders();
  
