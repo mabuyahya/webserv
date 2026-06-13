@@ -25,7 +25,10 @@ private:
     void    handleDirectory(const std::string& path, const ServerConfig* config);
     void    buildDirectoryListing(const std::string& path);
     void    formatHeaders();
- 
+    bool    isCgiTarget(const std::string& path, const ServerConfig* config);
+    void    handleCgi(const HttpRequest& req, const std::string& path, const LocationConfig* loc);
+    void    handleDelete(const std::string& path, const ServerConfig* config);
+    void    handleStaticFile(const std::string& path, size_t fileSize, const ServerConfig* config);
 public:
     HttpResponse();
     void    generate(const HttpRequest& req, const ServerConfig* config);

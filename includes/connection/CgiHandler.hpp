@@ -15,7 +15,7 @@ private:
 
 public:
     CgiHandler();
-    void    initEnv(const HttpRequest& req, const LocationConfig* loc);
+    void    initEnv(const HttpRequest& req, const std::string& scriptPath, const LocationConfig* loc);
     bool    executeCgi();
     int     getReadFd() const; // To give to poll()
     int     getWriteFd() const; // To give to poll()

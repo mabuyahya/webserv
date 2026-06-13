@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <dirent.h>
 HttpResponse::HttpResponse() {
     _statusCode = 200;
     _headersSent = false;
@@ -33,14 +34,138 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
         return;
     }
     struct stat fileInfo;
-    if (stat(physicalPath.c_str(), &fileInfo) != 0) {
+    if (stat(physicalPath.c_str(), &fileInfo) != 0 || access(physicalPath.c_str(), F_OK) != 0) {
         return buildErrorPage(404, config);
     }
     if (S_ISDIR(fileInfo.st_mode)) {
         handleDirectory(physicalPath, config);
     }
+    else if (isCgiTarget(physicalPath, config )){
+        handleCgi(req, physicalPath, config->matchLocation(uri));
+    }
+    else if (req.getMethod() == "DELETE") {
+        handleDelete(physicalPath, config);
+    }
+    else {
+        handleStaticFile(physicalPath, fileInfo.st_size, config);
+    }
     formatHeaders();
 }
+
+void HttpResponse::handleStaticFile(const std::string& path, size_t fileSize, const ServerConfig* config) {
+    _fileFd = open(path.c_str(), O_RDONLY);
+    if (_fileFd == -1) {
+        buildErrorPage(500, config);
+        return;
+    }
+    _isFileResponse = true;
+    _headers["Content-Type"] = "application/octet-stream"; // Simplification
+    _headers["Content-Length"] = std::to_string(fileSize);
+}
+
+void HttpResponse::handleDelete(const std::string& path, const ServerConfig* config) {
+    if (unlink(path.c_str()) == 0) {
+        _statusCode = 200;
+        _stringBody = "<html><body><h1>File deleted successfully</h1></body></html>";
+    } else {
+        _statusCode = 500;
+        _stringBody = "<html><body><h1>Failed to delete file</h1></body></html>";
+    }
+    _headers["Content-Type"] = "text/html";
+    _headers["Content-Length"] = std::to_string(_stringBody.size());
+}
+
+bool HttpResponse::isCgiTarget(const std::string& path, const ServerConfig* config) {
+    const LocationConfig* location = NULL;
+    try {
+        location = config->matchLocation(path);
+        if (!location->getCgiExtension().empty() && path.size() >= location->getCgiExtension().size()) {
+            return true;
+        }
+    } catch (const std::exception&) {
+        // Ignore exception
+    }
+    return false;
+}
+
+
+
+void HttpResponse::handleCgi(const HttpRequest& req, const std::string& path, const LocationConfig* loc) {
+    _cgi.initEnv(req, path, loc);
+
+    if(!_cgi.executeCgi()) {
+        buildErrorPage(500, NULL);
+        return;
+    }
+
+    
+    // _statusCode = 200; // Assume CGI execution is successful for simplicity
+    // _isFileResponse = false;
+    // _statusCode = 200; // Assume CGI execution is successful for simplicity
+    // _headers["Content-Type"] = "text/html"; // Simplification
+    // _headers["Content-Length"] = std::to_string(_cgi.getOutput().size());
+    formatHeaders();
+}
+
+
+
+void HttpResponse::handleDirectory(const std::string& path, const ServerConfig* config)
+{
+
+    const LocationConfig* location = NULL;
+    try {
+        location = config->matchLocation(path);
+        std::string indexFile = location->getIndex();
+        if (!indexFile.empty()) {
+            std::string indexPath = path;
+            if (indexPath.back() != '/')
+                indexPath += "/";
+            indexPath += indexFile;
+            struct stat fileInfo;
+            if (stat(indexPath.c_str(), &fileInfo) == 0 && S_ISREG(fileInfo.st_mode)) {
+                _fileFd = open(indexPath.c_str(), O_RDONLY);
+                if (_fileFd != -1) {
+                    _isFileResponse = true;
+                    _headers["Content-Type"] = "text/html"; // Simplification
+                    _headers["Content-Length"] = std::to_string(lseek(_fileFd, 0, SEEK_END));
+                    lseek(_fileFd, 0, SEEK_SET);
+                    return;
+                }
+            }
+        }
+        if (location->getAutoIndex()) {
+            buildDirectoryListing(path);
+            return;
+        }
+         buildErrorPage(403, config); // Forbidden if no index and autoindex is off
+
+    } catch (const std::exception&) {
+        buildErrorPage(404, config);
+    }
+}
+
+void HttpResponse::buildDirectoryListing(const std::string& path) {
+    // For simplicity, we will just return a basic HTML listing
+    _stringBody = "<html><body><h1>Directory listing for " + path + "</h1><ul>";
+    DIR* dir = opendir(path.c_str());
+    // if(!dir)
+    // {
+    //     //
+    // }
+    if (dir) {
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            std::string name = entry->d_name;
+            if (name == ".") continue;
+            _stringBody += "<li><a href=\"" + name + "\">" + name + "</a></li>";
+        }
+        closedir(dir);
+    }
+    _stringBody += "</ul></body></html>";
+    _headers["Content-Type"] = "text/html";
+    _headers["Content-Length"] = std::to_string(_stringBody.size());
+}
+
 
 
 static std::string  physicalPathForUri(const std::string& uri, const ServerConfig* config) {
