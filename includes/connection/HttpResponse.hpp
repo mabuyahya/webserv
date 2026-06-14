@@ -10,6 +10,7 @@ private:
     std::map<std::string, std::string>  _headers;
     std::string                         _headerBuffer;
     bool                                _headersSent;
+    size_t                              _headersBytesSent;
 
     // For static files
     int                                 _fileFd;
@@ -19,7 +20,13 @@ private:
     std::string                         _stringBody;
     size_t                              _stringBytesSent;
 
+    bool                                _isCgiRunning;
     CgiHandler                          _cgi;
+    int                                 _cgiReadFd;
+    int                                 _cgiWriteFd;
+    bool                                _isGenerated;   
+    bool                                _isComplete;
+
 
     void    buildErrorPage(int code, const ServerConfig* config);
     void    handleDirectory(const std::string& path, const ServerConfig* config);
@@ -35,5 +42,11 @@ public:
     
     // Called by ServerManager on WRITE event
     int     sendNextChunk(int client_socket); 
+    bool     isGenerated() const;
     bool    isComplete() const;
+
+    // Getters for CGI handling
+    bool    isCgiRunning() const;
+    int     getCgiReadFd() const;
+    int     getCgiWriteFd() const;
 };

@@ -4,14 +4,30 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <sys/socket.h>
 HttpResponse::HttpResponse() {
     _statusCode = 200;
     _headersSent = false;
     _fileFd = -1;
     _isFileResponse = false;
     _stringBytesSent = 0;
+    _isCgiRunning = false;
+    _cgiReadFd = -1;
+    _cgiWriteFd = -1;
+    _isGenerated = false;
+    _isComplete = false;
+
 
 }
+
+bool HttpResponse::isGenerated() const {
+    return _isGenerated;
+}
+
+bool HttpResponse::isComplete() const {
+    return _isComplete;
+}
+
 void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) {
     if (req.hasError())
     {
@@ -50,6 +66,53 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
         handleStaticFile(physicalPath, fileInfo.st_size, config);
     }
     formatHeaders();
+    _isGenerated = true;
+}
+
+
+int HttpResponse::sendNextChunk(int client_socket) {
+    if (!_headersSent) {
+        size_t bytesToSend = _headerBuffer.length() - _headersBytesSent;
+        ssize_t sent = send(client_socket, _headerBuffer.c_str() + _headersBytesSent, bytesToSend, 0);
+        if (sent == -1) {
+            return -1; // Error
+        }
+        _headerBuffer.erase(0, sent);
+        if (_headerBuffer.empty()) {
+            _headersSent = true;
+        } else {
+            return 0; // Not done sending headers
+        }
+    }
+
+    if (_isFileResponse) {
+        char buffer[4096];
+        ssize_t bytesRead = read(_fileFd, buffer, sizeof(buffer));
+        if (bytesRead == -1) {
+            return -1; // Error
+        } else if (bytesRead == 0) {
+            _isComplete = true;
+            close(_fileFd);
+            return 0; // Done sending file
+        }
+        ssize_t bytesSent = send(client_socket, buffer, bytesRead, 0);
+        if (bytesSent == -1) {
+            return -1; // Error
+        }
+        return bytesSent;
+    } else {
+        size_t remaining = _stringBody.size() - _stringBytesSent;
+        ssize_t bytesSent = send(client_socket, _stringBody.c_str() + _stringBytesSent, remaining, 0);
+        if (bytesSent == -1) {
+            return -1; // Error
+        }
+        _stringBytesSent += bytesSent;
+        if (_stringBytesSent >= _stringBody.size()) {
+            _isComplete = true;
+            return 0; // Done sending string body
+        }
+        return bytesSent;
+    }
 }
 
 void HttpResponse::handleStaticFile(const std::string& path, size_t fileSize, const ServerConfig* config) {
@@ -99,12 +162,12 @@ void HttpResponse::handleCgi(const HttpRequest& req, const std::string& path, co
     }
 
     
-    // _statusCode = 200; // Assume CGI execution is successful for simplicity
-    // _isFileResponse = false;
-    // _statusCode = 200; // Assume CGI execution is successful for simplicity
-    // _headers["Content-Type"] = "text/html"; // Simplification
-    // _headers["Content-Length"] = std::to_string(_cgi.getOutput().size());
-    formatHeaders();
+    _isFileResponse = false;
+    _statusCode = 200;
+    _isCgiRunning = true;
+
+    _cgiReadFd = _cgi.getReadFd();
+    _cgiWriteFd = _cgi.getWriteFd();
 }
 
 
