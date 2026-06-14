@@ -18,6 +18,7 @@ private:
 
     std::map<int, ServerConfig>         _listeningSockets;
     std::map<int, Client>               _clients;
+    std::map<int, int> _cgiToClient;
 
 
     void    setupServers(const std::vector<ServerConfig>& configs);

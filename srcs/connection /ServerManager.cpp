@@ -135,70 +135,147 @@ void ServerManager::run() { // takes the epoll wait result and at according to i
 					acceptNewConnection(currFD);
 				else if (_clients.count(currFD))
 					handleClientRead(currFD);
+				else if (_cgiToClient.count(currFD))
+                handleCgiRead(currFD);
 			}
 			else if (currEvent & EPOLLOUT)
 			{
 				if (_clients.count(currFD))
 					handleClientWrite(currFD);
+				else if (_cgiToClient.count(currFD))
+                    handleCgiWrite(currFD);
 			}
 		}
 	}
 }
 
-void ServerManager::checkTimeouts() {
-	time_t now = time(NULL);
-	std::vector<int> timedOutClients;
+void ServerManager::handleCgiWrite(int pipe_fd) {
+    // 1. Find the client associated with this pipe
+    int client_fd = _cgiToClient[pipe_fd];
+    Client& client = _clients[client_fd];
 
-	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-		if (it->second.hasTimedOut()) {
-			timedOutClients.push_back(it->first);
-		}
-	}
+    // 2. Get the body data and calculate what's left to send
+    const std::vector<char>& body = client.getRequest().getBody();
+    size_t sentSoFar = client.getResponse().getCgiBytesWritten();
+    size_t remaining = body.size() - sentSoFar;
 
-	for (size_t i = 0; i < timedOutClients.size(); i++) {
-		removeClient(timedOutClients[i]);
-	}
+    if (remaining > 0) {
+        // C++98 safe way to get the raw char pointer from a vector
+        const char* bodyData = &body[0]; 
+        
+        ssize_t written = write(pipe_fd, bodyData + sentSoFar, remaining);
+
+        if (written > 0) {
+            client.getResponse().addCgiBytesWritten(written);
+        } 
+        else if (written == -1 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
+            // FATAL ERROR: The pipe broke
+            removeFromEpoll(pipe_fd);
+            close(pipe_fd);
+            _cgiToClient.erase(pipe_fd);
+            
+            // Mark response as 500 Internal Server Error and wake up the browser
+            client.getResponse().buildErrorPage(500, client.getConfig());
+            modifyEpoll(client_fd, EPOLLOUT); 
+            return;
+        }
+    }
+
+    // 3. Check if we are completely done sending the body
+    if (client.getResponse().getCgiBytesWritten() >= body.size()) {
+        // We pushed everything! 
+        // We MUST close this pipe now. Closing the write-end tells the 
+        // CGI script "EOF" so it knows to stop waiting for data and start calculating.
+        removeFromEpoll(pipe_fd);
+        close(pipe_fd);
+        _cgiToClient.erase(pipe_fd);
+    }
 }
 
-void ServerManager::acceptNewConnection(int server_fd) {
-	struct sockaddr_in client_addr;
-	socklen_t client_len = sizeof(client_addr);
+#include <sys/wait.h> // Required for waitpid
 
-	int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
-	if (client_fd == -1) {
-		std::cerr << "Failed to accept new connection" << std::endl;
-		return;
-	}
+void ServerManager::handleCgiRead(int pipe_fd) {
+    // 1. Find the client associated with this pipe
+    int client_fd = _cgiToClient[pipe_fd];
+    Client& client = _clients[client_fd];
 
-	if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
-	{
-		std::cerr << "Failed to set client socket to non-blocking" << std::endl;
-		close(client_fd);
-		return;
-	}
-	_clients[client_fd] = Client(client_fd, &_listeningSockets[server_fd]);
-	addToEpoll(client_fd, EPOLLIN);
+    char buffer[8192];
+    ssize_t bytesRead = read(pipe_fd, buffer, sizeof(buffer));
+
+    if (bytesRead > 0) {
+        // 2. The CGI printed something! Append it to our response string
+        client.getResponse().appendCgiOutput(buffer, bytesRead);
+    } 
+    else if (bytesRead == 0) {
+        // 3. THE MAGIC MOMENT (EOF)
+        // The CGI script has finished executing and closed its stdout.
+        
+        // Step A: Clean up the pipes
+        removeFromEpoll(pipe_fd);
+        close(pipe_fd);
+        _cgiToClient.erase(pipe_fd);
+
+        // Step B: Clean up the Zombie Process
+        // (You need to store the pid returned by fork() in your CgiHandler)
+        int status;
+        pid_t cgiPid = client.getResponse().getCgiPid();
+        waitpid(cgiPid, &status, WNOHANG); 
+
+        // Step C: Wake up the browser!
+        // We put the client's network socket BACK into epoll as a WRITE event.
+        // On the next loop, handleClientWrite() will trigger and send the 
+        // buffered HTML to the user.
+        client.getResponse().setCgiFinished(true); 
+        
+        // We use addToEpoll here because we removed the client earlier to put them on hold
+        addToEpoll(client_fd, EPOLLOUT); 
+    } 
+    else if (bytesRead == -1 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
+        // FATAL ERROR: Read failed
+        removeFromEpoll(pipe_fd);
+        close(pipe_fd);
+        _cgiToClient.erase(pipe_fd);
+        
+        client.getResponse().buildErrorPage(500, client.getConfig());
+        addToEpoll(client_fd, EPOLLOUT); 
+    }
 }
 
-void ServerManager::handleClientRead(int client_fd) {
+void ServerManager::handleClientWrite(int client_fd) {
 	Client& client = _clients[client_fd];
-	char buffer[4096];
-	ssize_t bytesRead = recv(client_fd, buffer, sizeof(buffer), 0);
-	if (bytesRead == -1) {
-		if (errno != EAGAIN && errno != EWOULDBLOCK) {
-			removeClient(client_fd);
-		}
-		return;
-	} else if (bytesRead == 0) {
+	HttpResponse& response = client.getResponse();
+
+	if (!response.isGenerated()) {
+		response.generate(client.getRequest(), client.getServerConfig());
+
+		if (client.getResponse().isCgiRunning()) {
+            int cgiReadPipe = client.getResponse().getCgiReadFd();
+            int cgiWritePipe = client.getResponse().getCgiWriteFd();
+
+            _cgiToClient[cgiReadPipe] = client_fd;
+            addToEpoll(cgiReadPipe, EPOLLIN); // Watch for CGI output
+            
+            // If it's a POST request, we need to send the body to the CGI
+            if (cgiWritePipe != -1) {
+                _cgiToClient[cgiWritePipe] = client_fd;
+                addToEpoll(cgiWritePipe, EPOLLOUT); 
+            }
+            
+            // CRITICAL: We stop watching the CLIENT for now, 
+            // because we are waiting on the CGI to finish.
+            removeFromEpoll(client_fd); 
+            return; // We exit here! We can't send anything to the client yet.
+        }
+	}
+
+	int status = response.sendNextChunk(client_fd);
+	if (status == -1) {
 		removeClient(client_fd);
 		return;
 	}
-
-	client.updateActivity();
-	client.getRequest().feedData(buffer, bytesRead);
-	if (client.getRequest().isComplete()) {
-		modifyEpoll(client_fd, EPOLLOUT);
-	} else if (client.getRequest().hasError()) {
-		modifyEpoll(client_fd, EPOLLOUT);
-	}
+	else if (client.getResponse().isComplete()) {
+        removeClient(client_fd);
+    }
 }
+
+void S

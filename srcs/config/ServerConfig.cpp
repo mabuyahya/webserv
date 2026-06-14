@@ -129,3 +129,12 @@ void ServerConfig::addLocation(const LocationConfig& location) {
 // /website/mabuyahy
 
 // / , /website , /website/mabuyahy
+
+const std::string& ServerConfig::getErrorPage(int statusCode) const {
+    std::map<int, std::string>::const_iterator it = _errorPages.find(statusCode);
+    if (it != _errorPages.end()) {
+        return it->second;
+    }
+    static const std::string emptyString = "";
+    return emptyString;
+}

@@ -23,6 +23,7 @@ public:
     const std::string& getServerName() const;
     size_t getClientMaxBodySize() const;
     const std::map<int, std::string>& getErrorPages() const;
+    const std::string& getErrorPage(int statusCode) const;
     const std::vector<LocationConfig>& getLocations() const;
     // setters
     void setPort(int port);
