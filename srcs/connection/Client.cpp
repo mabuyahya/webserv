@@ -1,19 +1,19 @@
 
 #include "Client.hpp"
-#include <cstring>
-
 Client::Client(int fd, const ServerConfig* config)
-    : _socketFd(fd), _serverConfig(config), _lastActivityTime(time(NULL)),
-      _state(READING_REQUEST), _request(config) {
-    memset(&_address, 0, sizeof(_address));
-}
+    : _socketFd(fd), _serverConfig(config), _idleCycles(0),
+      _state(READING_REQUEST), _request(config) {}
 
 bool Client::hasTimedOut() const {
-    return (time(NULL) - _lastActivityTime) > 60; // 60 seconds timeout
+    return _idleCycles > 300;
 }
 
 void Client::updateActivity() {
-    _lastActivityTime = time(NULL);
+    _idleCycles = 0;
+}
+
+void Client::incrementIdle() {
+    ++_idleCycles;
 }
 
 

@@ -1,8 +1,6 @@
 #pragma once
 #include <string>
 #include <map>
-#include <ctime>
-#include <netinet/in.h>
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 
@@ -16,9 +14,8 @@ enum ClientState {
 class Client {
 private:
     int                                 _socketFd;
-    struct sockaddr_in                  _address;
     const ServerConfig* _serverConfig; // The config of the port they connected to
-    time_t                              _lastActivityTime;
+    size_t                              _idleCycles;
     
     ClientState                         _state;
     HttpRequest                         _request;
@@ -29,6 +26,7 @@ public:
     
     bool    hasTimedOut() const;
     void    updateActivity();
+    void    incrementIdle();
     
 
     void    setClientState(ClientState newState);

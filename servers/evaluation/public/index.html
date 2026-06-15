@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>webserv evaluation console</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <nav>
+      <strong>webserv<span>.</span></strong>
+      <div><a href="/files/">Autoindex</a><a href="/uploads/">Uploads</a><a href="http://127.0.0.1:8081/">Port 8081</a></div>
+    </nav>
+    <div class="hero-copy">
+      <p class="eyebrow">42 evaluation console</p>
+      <h1>One page.<br><em>Every route.</em></h1>
+      <p>Exercise static delivery, methods, redirects, errors, CGI, uploads, body limits, and multiple listening ports from a browser.</p>
+      <button class="primary" id="run-suite">Run browser checks</button>
+    </div>
+    <div class="status-orbit"><span id="server-dot"></span><b>127.0.0.1:8080</b><small>ready for requests</small></div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <p class="eyebrow">Live checks</p>
+      <h2>Mandatory behavior, visible.</h2>
+      <p>Each tile sends a real HTTP request to this server and reports the status and response preview.</p>
+    </section>
+
+    <section class="grid" id="checks">
+      <article class="card"><div class="number">01</div><h3>Static JSON</h3><p>Nested static file and MIME type.</p><button data-check="static">GET /nested/info.json</button><pre id="static-result">Not run</pre></article>
+      <article class="card"><div class="number">02</div><h3>Custom 404</h3><p>Configured error page behavior.</p><button data-check="missing">GET missing resource</button><pre id="missing-result">Not run</pre></article>
+      <article class="card"><div class="number">03</div><h3>Method guard</h3><p>POST rejected on GET-only route.</p><button data-check="method">POST /get-only/</button><pre id="method-result">Not run</pre></article>
+      <article class="card"><div class="number">04</div><h3>Redirect</h3><p>Configured 302 and Location header.</p><button data-check="redirect">GET /redirect</button><pre id="redirect-result">Not run</pre></article>
+      <article class="card"><div class="number">05</div><h3>Autoindex</h3><p>Generated directory listing.</p><button data-check="autoindex">GET /files/</button><pre id="autoindex-result">Not run</pre></article>
+      <article class="card"><div class="number">06</div><h3>CGI query</h3><p>Python CGI environment and query string.</p><button data-check="cgi">GET /cgi/env.py?name=peer</button><pre id="cgi-result">Not run</pre></article>
+      <article class="card"><div class="number">07</div><h3>CGI body</h3><p>POST body delivered through a pipe.</p><button data-check="cgi-post">POST /cgi/env.py</button><pre id="cgi-post-result">Not run</pre></article>
+      <article class="card"><div class="number">08</div><h3>Body limit</h3><p>Payload above 1 MiB gets 413.</p><button data-check="limit">POST oversized body</button><pre id="limit-result">Not run</pre></article>
+    </section>
+
+    <section class="workbench">
+      <div>
+        <p class="eyebrow">Upload workbench</p>
+        <h2>POST it. GET it. DELETE it.</h2>
+        <p>Files are sent as raw request bodies to <code>/uploads/&lt;filename&gt;</code>.</p>
+      </div>
+      <form id="upload-form">
+        <input id="upload-file" type="file" required>
+        <button class="primary" type="submit">Upload selected file</button>
+        <button type="button" id="refresh-uploads">Refresh listing</button>
+        <input id="delete-name" type="text" placeholder="filename.txt">
+        <button type="button" id="delete-upload">DELETE named file</button>
+      </form>
+      <pre id="upload-result">Choose a small file to begin.</pre>
+    </section>
+  </main>
+
+  <footer><span>webserv / C++98 / epoll</span><span>HTTP/1.0 / Connection: close</span></footer>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

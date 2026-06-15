@@ -1,0 +1,5 @@
+{
+  "project": "webserv",
+  "purpose": "nested static-file and JSON MIME-type check",
+  "status": "served"
+}
