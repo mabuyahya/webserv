@@ -103,20 +103,14 @@ void LocationConfig::validateAllowedMethod(const std::string& method) {
 }
 
 void LocationConfig::validateCgiExtension(const std::string& extension) {
-    if (extension.empty()) {
+    if (extension.empty() || extension[0] != '.') {
         throw std::invalid_argument("CGI extension cannot be empty");
-    }
-    if (extension != ".py") {
-        throw std::invalid_argument("CGI extension must be '.py'");
     }
 }
 
 void LocationConfig::validateCgiPath(const std::string& path) {
-    if (path.empty()) {
+    if (path.empty() || path[0] != '/') {
         throw std::invalid_argument("CGI path cannot be empty");
-    }
-    if (path != "/usr/bin/python3") {
-        throw std::invalid_argument("CGI path must be '/usr/bin/python3'");
     }
 }
 
@@ -140,7 +134,7 @@ void LocationConfig::validateIndex(const std::string& index) {
 }
 
 void LocationConfig::validatePath(const std::string& path) {
-    if (path.empty()) {
+    if (path.empty() || path[0] != '/') {
         throw std::invalid_argument("Path cannot be empty");
     }
 }

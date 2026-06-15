@@ -100,7 +100,10 @@ const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const 
 
     for (size_t i = 0; i < _locations.size(); ++i) {
         const std::string& locationPath = _locations[i].getPath();
-        if (uri.compare(0, locationPath.length(), locationPath) == 0) {
+        bool prefixMatches = uri.compare(0, locationPath.length(), locationPath) == 0;
+        bool boundaryMatches = locationPath == "/" || uri.length() == locationPath.length()
+            || (uri.length() > locationPath.length() && uri[locationPath.length()] == '/');
+        if (prefixMatches && boundaryMatches) {
             if (locationPath.length() > longestMatchLength) {
                 longestMatchLength = locationPath.length();
                 bestMatch = &_locations[i];

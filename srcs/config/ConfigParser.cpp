@@ -4,7 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
-#include <cstdlib>
+#include <limits>
 
 ConfigParser::ConfigParser(const std::string& path) : _configFile(path) {}
 
@@ -62,41 +62,41 @@ static bool ends_with(const std::string& str, const std::string& suffix)
 }
 
 static int my_stoi(const std::string& str) {
-    return atoi(str.c_str());
+    if (str.empty())
+        throw std::runtime_error("Expected a number, got an empty value");
+    size_t value = 0;
+    for (size_t i = 0; i < str.size(); ++i) {
+        if (str[i] < '0' || str[i] > '9')
+            throw std::runtime_error("Invalid number: " + str);
+        size_t digit = static_cast<size_t>(str[i] - '0');
+        if (value > (static_cast<size_t>(std::numeric_limits<int>::max()) - digit) / 10)
+            throw std::runtime_error("Invalid number: " + str);
+        value = value * 10 + digit;
+    }
+    return static_cast<int>(value);
 }
 
 static size_t my_stoul(const std::string& str) {
-    return strtoul(str.c_str(), NULL, 10);
+    if (str.empty() || str[0] == '-')
+        throw std::runtime_error("Invalid positive number: " + str);
+    size_t value = 0;
+    for (size_t i = 0; i < str.size(); ++i) {
+        if (str[i] < '0' || str[i] > '9')
+            throw std::runtime_error("Invalid positive number: " + str);
+        size_t digit = static_cast<size_t>(str[i] - '0');
+        if (value > (std::numeric_limits<size_t>::max() - digit) / 10)
+            throw std::runtime_error("Invalid positive number: " + str);
+        value = value * 10 + digit;
+    }
+    return value;
 }
 
 static void checkIfAllMondatoryLocationDirectivesSet(const LocationConfig& locConfig) {
     if (locConfig.getPath().empty()) {
         throw std::runtime_error("Path directive is required in location block");
     }
-    if (locConfig.getRoot().empty()) {
+    if (locConfig.getRoot().empty() && locConfig.getReturn().first == 0) {
         throw std::runtime_error("Root directive is required in location block :" + locConfig.getPath());
-    }
-    if (locConfig.getIndex().empty()) {
-        throw std::runtime_error("Index directive is required in location block :" + locConfig.getPath());
-    }
-}
-
-static bool hasAllowedMethod(const LocationConfig& locConfig, const std::string& method) {
-    const std::vector<std::string>& allowedMethods = locConfig.getAllowedMethods();
-
-    for (size_t i = 0; i < allowedMethods.size(); ++i) {
-        if (allowedMethods[i] == method)
-            return true;
-    }
-    return false;
-}
-
-static void checkPostLocationHasBodyHandler(const LocationConfig& locConfig) {
-    bool hasCgi = !locConfig.getCgiExtension().empty() && !locConfig.getCgiPath().empty();
-    bool hasUploadDir = !locConfig.getUploadDir().empty();
-
-    if (hasAllowedMethod(locConfig, "POST") && !hasCgi && !hasUploadDir) {
-        throw std::runtime_error("Location block '" + locConfig.getPath() + "' allows POST but has no cgi or upload_dir directive");
     }
 }
 
@@ -110,7 +110,9 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
 
     // Parse listen directive
     std::vector<std::string> listenParts = split(s_directives.getListen(), ":");
-    if (listenParts.size() == 0 || listenParts.size() > 2) {
+    if (s_directives.getListen()[0] == ':'
+        || s_directives.getListen()[s_directives.getListen().size() - 1] == ':'
+        || listenParts.size() == 0 || listenParts.size() > 2) {
         throw std::runtime_error("Invalid listen directive: " + s_directives.getListen());
     }
     if (listenParts.size() == 1) {
@@ -201,7 +203,6 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
             locConfig.setCgiPath(locDir.getCgiPath());
         }
         checkIfAllMondatoryLocationDirectivesSet(locConfig);
-        checkPostLocationHasBodyHandler(locConfig);
         config.addLocation(locConfig);
     }
     return config;
@@ -210,6 +211,7 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
 
 
 void ConfigParser::parse() {
+    _servers.clear();
     std::ifstream file(_configFile.c_str());
     if (!file.is_open()) {
         throw std::runtime_error("Could not open config file: " + _configFile);
@@ -225,9 +227,10 @@ void ConfigParser::parse() {
         if (starts_with(tokens[0], "#"))
             continue;
 
-        if (tokens.size() >= 2 && tokens[0] == "server" && tokens[1] == "{") {
+        if (tokens.size() == 2 && tokens[0] == "server" && tokens[1] == "{") {
             serverDirectives s_directives;
             std::string blockLine;
+            bool serverClosed = false;
             
             while (std::getline(file, blockLine)) {
                 std::vector<std::string> blockTokens = split(blockLine, " \t");
@@ -236,7 +239,8 @@ void ConfigParser::parse() {
                     continue;
                 if (starts_with(blockTokens[0], "#"))
                     continue;
-                if (blockLine == "}") {
+                if (blockTokens.size() == 1 && blockTokens[0] == "}") {
+                    serverClosed = true;
                     break;
                 }
 
@@ -292,12 +296,13 @@ void ConfigParser::parse() {
                 } else if (blockTokens.size() == 2 && blockTokens[0] == "client_max_body_size") {
                     s_directives.setClientMaxBodySize(blockTokens[1]);
                 } else if (blockTokens.size() >= 2 && blockTokens[0] == "location") {
-                    if (blockTokens.size() < 3 || blockTokens[2] != "{") {
+                    if (blockTokens.size() != 3 || blockTokens[2] != "{") {
                         throw std::runtime_error("Invalid location block syntax");
                     }
                     locationDirectives loc_directives;
                     loc_directives.setPath(blockTokens[1]);
                     std::string locLine;
+                    bool locationClosed = false;
                     
                     while (std::getline(file, locLine)) {
                         std::vector<std::string> locTokens = split(locLine, " \t");
@@ -308,6 +313,7 @@ void ConfigParser::parse() {
                             if (starts_with(locTokens[0], "#"))
                             continue;
                             if (locTokens.size() == 1 && locTokens[0] == "}") {
+                            locationClosed = true;
                             break;
                         }
 
@@ -364,6 +370,8 @@ void ConfigParser::parse() {
                             throw std::runtime_error("Unknown directive in location block: " + locTokens[0]);
                         }
                     }
+                    if (!locationClosed)
+                        throw std::runtime_error("Unclosed location block: " + loc_directives.getPath());
                     s_directives.addLocation(loc_directives);
                 } else if (blockTokens[0] == "upload_dir" || blockTokens[0] == "return" ||
                            blockTokens[0] == "cgi") {
@@ -372,8 +380,11 @@ void ConfigParser::parse() {
                     throw std::runtime_error("Unknown directive in server block: " + blockTokens[0]);
                 }
             }
+            if (!serverClosed)
+                throw std::runtime_error("Unclosed server block");
             _servers.push_back(parse_server_directives(s_directives));
-        }
+        } else
+            throw std::runtime_error("Unknown top-level directive: " + tokens[0]);
     }
 
     file.close();

@@ -1,0 +1,1 @@
+This nested directory proves that generated listing links can be followed.

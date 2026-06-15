@@ -1,42 +1,32 @@
-NAME= webserv
-CXX= c++
-CXXFLAGS= -Wall -Wextra -Werror -std=c++98
-RM= rm -f
+NAME := webserv
+CXX := c++
+CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -MMD -MP
+CPPFLAGS := -Iincludes/config -Iincludes/connection
+RM := rm -f
 
-OBJDIR= obj
+OBJDIR := obj
+SRCS := main.cpp \
+	srcs/config/ConfigParser.cpp \
+	srcs/config/ServerConfig.cpp \
+	srcs/config/LocationConfig.cpp \
+	srcs/config/serverDirectives.cpp \
+	srcs/config/locationDirectives.cpp \
+	srcs/connection/HttpRequest.cpp \
+	srcs/connection/HttpResponse.cpp \
+	srcs/connection/CgiHandler.cpp \
+	srcs/connection/Client.cpp \
+	srcs/connection/ServerManager.cpp
+OBJS := $(SRCS:%.cpp=$(OBJDIR)/%.o)
+DEPS := $(OBJS:.o=.d)
 
-OBJS= $(OBJDIR)/main.o \
-		$(OBJDIR)/ConfigParser.o \
-		$(OBJDIR)/ServerConfig.o \
-		$(OBJDIR)/LocationConfig.o \
-		$(OBJDIR)/serverDirectives.o \
-		$(OBJDIR)/locationDirectives.o
-
-all: $(OBJDIR) $(NAME)
+all: $(NAME)
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
-$(OBJDIR)/main.o: main.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(OBJDIR)/ConfigParser.o: srcs/config/ConfigParser.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(OBJDIR)/ServerConfig.o: srcs/config/ServerConfig.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(OBJDIR)/LocationConfig.o: srcs/config/LocationConfig.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(OBJDIR)/serverDirectives.o: srcs/config/serverDirectives.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(OBJDIR)/locationDirectives.o: srcs/config/locationDirectives.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
+$(OBJDIR)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	$(RM) -r $(OBJDIR)
@@ -47,3 +37,5 @@ fclean: clean
 re: fclean all
 
 .PHONY: all clean fclean re
+
+-include $(DEPS)
