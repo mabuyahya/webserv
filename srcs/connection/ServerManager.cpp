@@ -25,9 +25,9 @@ ServerManager::ServerManager(const std::vector<ServerConfig>& configs) : _epollF
     _epollFd = epoll_create(1);
     if (_epollFd == -1)
         throw std::runtime_error("Could not create epoll instance");
-    fcntl(_epollFd, F_SETFD, FD_CLOEXEC); // added by ai
+    fcntl(_epollFd, F_SETFD, FD_CLOEXEC);
     setupServers(configs);
-    if (_listeningSockets.empty()) // added by ai
+    if (_listeningSockets.empty())
         throw std::runtime_error("Could not bind any configured listening socket");
 }
 
@@ -35,7 +35,7 @@ ServerManager::~ServerManager() {
     for (std::map<int, int>::iterator it = _cgiToClient.begin(); it != _cgiToClient.end(); ++it)
         close(it->first);
     for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-        if (it->second.getResponse().isCgiRunning())// added by ai
+        if (it->second.getResponse().isCgiRunning())
             kill(it->second.getResponse().getCgiPid(), SIGKILL);
         close(it->first);
     }

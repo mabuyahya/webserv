@@ -1,10 +1,12 @@
-*This project has been created as part of the 42 curriculum by hassende, mabuyahy, mdarawsh.*
+*This project has been created as part of the 42 curriculum by mabuyahy, mdarawsh, hassende.*
 
 # webserv
 
 ## Description
 
-`webserv` is an HTTP/1.0 server written in C++98. It always sends HTTP/1.0 responses with closed connections. It also accepts HTTP/1.1 request syntax so the evaluation frontend works in standard browsers, while preserving HTTP/1.0 response semantics. It uses one `epoll()` event loop for listening sockets, clients, and CGI pipes. The server supports static sites, multiple ports, custom error pages, route-level method rules, redirects, directory indexes and listings, uploads, DELETE, request-body limits, chunked request decoding, and Python CGI.
+`webserv` is an HTTP server written in C++98 for the 42 Webserv project. The goal is to reproduce the core behavior of a real web server: parse HTTP requests, serve files, generate correct responses, run CGI scripts, and keep multiple clients active without blocking.
+
+The server always sends HTTP/1.0 responses with closed connections. It also accepts HTTP/1.1 request syntax so standard browsers can be used during evaluation. It uses one `epoll()` event loop for listening sockets, clients, and CGI pipes. The server supports static websites, multiple listening ports, custom error pages, route-level method rules, redirects, directory indexes and listings, uploads, DELETE, request-body limits, chunked request decoding, and CGI execution.
 
 The evaluation setup is intentionally visible: `configs_files/evaluation.conf` serves a browser console on port `8080` and a second site on port `8081`.
 
@@ -12,7 +14,7 @@ The evaluation setup is intentionally visible: `configs_files/evaluation.conf` s
 
 - `srcs/config`: configuration parsing, validation, inheritance, and location matching.
 - `srcs/connection`: incremental request parsing, response generation, CGI, clients, and the epoll loop.
-- `servers/evaluation`: static site, errors, autoindex fixtures, CGI scripts, and upload storage.
+- `servers/evaluation`: static site, errors, autoindex fixtures, CGI scripts, optional PHP fixture, and upload storage.
 - `tests`: socket-level HTTP tests and invalid-configuration tests.
 
 All network sockets and CGI pipe endpoints are non-blocking. Regular files are streamed in bounded chunks.
@@ -41,6 +43,14 @@ Open:
 
 - `http://127.0.0.1:8080/` for the interactive evaluation console.
 - `http://127.0.0.1:8081/` to demonstrate a second listening port and root.
+
+Optional PHP CGI test:
+
+```sh
+./webserv configs_files/php_test.conf
+```
+
+Then open `http://127.0.0.1:8082/info.php`. This requires `php-cgi` to be installed at `/usr/bin/php-cgi`. The default evaluation configuration uses Python CGI because `/usr/bin/python3` is available on the tested environment.
 
 ## Tests
 
@@ -77,6 +87,7 @@ The HTTP suite covers the HTTP/1.0 response contract, browser-compatible request
 | `/cgi/status.py` | CGI-provided status code |
 | `/cgi/broken.py` | Malformed CGI output and 502 behavior |
 | `/cgi/slow.py` | Non-blocking CGI demonstration |
+| `/info.php` with `configs_files/php_test.conf` | Optional PHP CGI test if `php-cgi` is installed |
 | `/redirect` | Configured 302 response |
 | `/get-only/` | Route-level method rejection |
 
@@ -86,6 +97,7 @@ The HTTP suite covers the HTTP/1.0 response contract, browser-compatible request
 - [RFC 3875: CGI/1.1](https://datatracker.ietf.org/doc/html/rfc3875)
 - [Linux epoll documentation](https://man7.org/linux/man-pages/man7/epoll.7.html)
 - [Beej's Guide to Network Programming](https://beej.us/guide/bgnet/)
+- [PHP CGI/FastCGI manual](https://www.php.net/manual/en/install.unix.commandline.php)
 - NGINX was used as a behavioral reference for status codes, headers, and route behavior.
 
-AI was used to help audit the unfinished integration, design repeatable test cases and evaluation fixtures, identify protocol edge cases, and improve documentation. Every generated change must still be understood, reviewed, and defended by the project authors.
+AI was used to help audit integration issues, design repeatable test cases and evaluation fixtures, identify protocol edge cases, improve the README, and review the project against the subject. The project authors remain responsible for understanding, reviewing, testing, and defending every part of the final code.

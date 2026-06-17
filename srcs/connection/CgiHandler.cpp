@@ -85,6 +85,7 @@ bool CgiHandler::executeCgi() {
             directory = _scriptPath.substr(0, slash);
             script = _scriptPath.substr(slash + 1);
         }
+        _env["SCRIPT_FILENAME"] = script;
         if (chdir(directory.c_str()) == -1)
             throw std::runtime_error("CGI could not enter script directory");
         std::vector<char*> envp;
