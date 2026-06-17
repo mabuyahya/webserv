@@ -217,7 +217,8 @@ void HttpResponse::buildErrorPage(int code, const ServerConfig* config) {
     finalize();
 }
 
-bool HttpResponse::buildDirectoryListing(const std::string& uri, const std::string& path) {
+bool HttpResponse::buildDirectoryListing(const std::string& uri, const std::string& path,
+                                         const ServerConfig* config) {
     DIR* directory = opendir(path.c_str());
     if (directory == NULL)
         return false;
@@ -228,6 +229,14 @@ bool HttpResponse::buildDirectoryListing(const std::string& uri, const std::stri
         std::string name = entry->d_name;
         if (name == ".")
             continue;
+        if (config != NULL) {
+            std::string entryPath = path;
+            if (!entryPath.empty() && entryPath[entryPath.size() - 1] != '/')
+                entryPath += "/";
+            entryPath += name;
+            if (config->isDeletedPath(entryPath))
+                continue;
+        }
         _body += "<li><a href=\"" + name + "\">" + name + "</a></li>";
     }
     closedir(directory);
@@ -287,6 +296,7 @@ void HttpResponse::handleUpload(const HttpRequest& req, const LocationConfig* lo
         offset += static_cast<size_t>(count);
     }
     close(fd);
+    config->restoreDeletedPath(destination);
     _statusCode = 201;
     _headers["Content-Type"] = "application/json; charset=utf-8";
     _body = "{\"created\":\"" + suffix + "\",\"bytes\":" + numberToString(body.size()) + "}";
@@ -336,11 +346,12 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
     std::string path = physicalPath(req.getPath(), location);
     struct stat info;
     bool exists = stat(path.c_str(), &info) == 0;
+    bool deleted = config->isDeletedPath(path);
     if (req.getMethod() == "POST" && location->hasUploadDir()) {
         handleUpload(req, location, config);
         return;
     }
-    if (!exists) {
+    if (!exists || deleted) {
         buildErrorPage(404, config);
         return;
     }
@@ -353,10 +364,7 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
             buildErrorPage(403, config);
             return;
         }
-        if (unlink(path.c_str()) != 0) {
-            buildErrorPage(500, config);
-            return;
-        }
+        config->markDeletedPath(path);
         _statusCode = 204;
         finalize();
         return;
@@ -376,7 +384,8 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
                 indexPath += "/";
             indexPath += index;
             struct stat indexInfo;
-            if (stat(indexPath.c_str(), &indexInfo) == 0 && S_ISREG(indexInfo.st_mode)) {
+            if (stat(indexPath.c_str(), &indexInfo) == 0 && S_ISREG(indexInfo.st_mode)
+                && !config->isDeletedPath(indexPath)) {
                 if (isCgiTarget(indexPath, location)) {
                     handleCgi(req, indexPath, location, config);
                     return;
@@ -392,7 +401,7 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
             buildErrorPage(403, config);
             return;
         }
-        if (!buildDirectoryListing(req.getPath(), path)) {
+        if (!buildDirectoryListing(req.getPath(), path, config)) {
             buildErrorPage(403, config);
             return;
         }

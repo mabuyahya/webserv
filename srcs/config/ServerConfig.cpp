@@ -28,6 +28,10 @@ const std::vector<LocationConfig>& ServerConfig::getLocations() const {
     return _locations;
 }
 
+bool ServerConfig::isDeletedPath(const std::string& path) const {
+    return _deletedPaths.find(path) != _deletedPaths.end();
+}
+
 void ServerConfig::setPort(int port) {
     validatePort(port);
     _port = port;
@@ -128,6 +132,14 @@ void ServerConfig::addErrorPage(int statusCode, const std::string& page) {
 
 void ServerConfig::addLocation(const LocationConfig& location) {
     _locations.push_back(location);
+}
+
+void ServerConfig::markDeletedPath(const std::string& path) const {
+    _deletedPaths.insert(path);
+}
+
+void ServerConfig::restoreDeletedPath(const std::string& path) const {
+    _deletedPaths.erase(path);
 }
 // /website/mabuyahy
 

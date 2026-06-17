@@ -324,8 +324,6 @@ void ServerManager::run() {
     while (gRunning) {
         int count = epoll_wait(_epollFd, _events, MAX_EVENTS, 1000);
         if (count < 0) {
-            // if (errno == EINTR)
-            //     continue;
             throw std::runtime_error("epoll_wait failed");
         }
         for (int i = 0; i < count; ++i) {

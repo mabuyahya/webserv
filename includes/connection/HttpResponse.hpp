@@ -29,7 +29,8 @@ private:
 
     void    resetResponse();
     void    buildErrorPage(int code, const ServerConfig* config);
-    bool    buildDirectoryListing(const std::string& uri, const std::string& path);
+    bool    buildDirectoryListing(const std::string& uri, const std::string& path,
+                                  const ServerConfig* config);
     void    finalize();
     bool    finalizeFile(const std::string& path, size_t fileSize);
     void    handleCgi(const HttpRequest& req, const std::string& path,

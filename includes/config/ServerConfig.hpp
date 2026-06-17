@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include "LocationConfig.hpp"
 
 class ServerConfig {
@@ -12,6 +13,7 @@ private:
     size_t                              _clientMaxBodySize;
     std::map<int, std::string>          _errorPages;
     std::vector<LocationConfig>         _locations;
+    mutable std::set<std::string>       _deletedPaths;
 
 
 public:
@@ -25,6 +27,7 @@ public:
     const std::map<int, std::string>& getErrorPages() const;
     const std::string& getErrorPage(int statusCode) const;
     const std::vector<LocationConfig>& getLocations() const;
+    bool isDeletedPath(const std::string& path) const;
     // setters
     void setPort(int port);
     void setHost(const std::string& host);
@@ -34,6 +37,8 @@ public:
     void addErrorPage(int statusCode, const std::string& page);
     void addLocation(const LocationConfig& location);
     void setLocations(const std::vector<LocationConfig>& locations);
+    void markDeletedPath(const std::string& path) const;
+    void restoreDeletedPath(const std::string& path) const;
     //validation
     void validatePort(int port);
     // void validateHost(const std::string& host);
