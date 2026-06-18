@@ -187,6 +187,9 @@ ServerConfig ConfigParser::parse_server_directives(const serverDirectives& s_dir
         if (!locDir.getUploadDir().empty()) {
             locConfig.setUploadDir(locDir.getUploadDir());
         }
+        if (!locDir.getClientMaxBodySize().empty()) {
+            locConfig.setClientMaxBodySize(my_stoul(locDir.getClientMaxBodySize()));
+        }
         if (!locDir.getReturn().empty()) {
             int statusCode;
             std::string url;
@@ -358,13 +361,15 @@ void ConfigParser::parse() {
                             loc_directives.setAllowedMethods(allowedMethods);
                         } else if (locTokens.size() == 2 && locTokens[0] == "upload_dir") {
                             loc_directives.setUploadDir(locTokens[1]);
+                        } else if (locTokens.size() == 2 && locTokens[0] == "client_max_body_size") {
+                            loc_directives.setClientMaxBodySize(locTokens[1]);
                         } else if (locTokens.size() == 3 && locTokens[0] == "cgi") {
                             loc_directives.setCgiExtension(locTokens[1]);
                             loc_directives.setCgiPath(locTokens[2]);
                         } else if (locTokens.size() == 3 && locTokens[0] == "return") {
                             loc_directives.setReturn(locTokens[1] + " " + locTokens[2]);
                         } else if (locTokens[0] == "listen" || locTokens[0] == "server_name" ||
-                                   locTokens[0] == "client_max_body_size" || locTokens[0] == "error_page") {
+                                   locTokens[0] == "error_page") {
                             throw std::runtime_error("Directive '" + locTokens[0] + "' is only allowed in server block, not in location block");
                         } else {
                             throw std::runtime_error("Unknown directive in location block: " + locTokens[0]);

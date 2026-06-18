@@ -9,6 +9,7 @@ class locationDirectives {
         std::string _autoIndex;
         std::string _allowedMethods;
         std::string _uploadDir;
+        std::string _clientMaxBodySize;
         std::string _cgiExtension;
         std::string _cgiPath;
         std::string _return;
@@ -22,6 +23,7 @@ class locationDirectives {
         void setAutoIndex(const std::string& autoIndex);
         void setAllowedMethods(const std::string& allowedMethods);
         void setUploadDir(const std::string& uploadDir);
+        void setClientMaxBodySize(const std::string& clientMaxBodySize);
         void setCgiExtension(const std::string& cgiExtension);
         void setCgiPath(const std::string& cgiPath);
         void setReturn(const std::string& returnDirective);
@@ -31,6 +33,7 @@ class locationDirectives {
         const std::string& getAutoIndex() const;
         const std::string& getAllowedMethods() const;
         const std::string& getUploadDir() const;
+        const std::string& getClientMaxBodySize() const;
         const std::string& getCgiExtension() const;
         const std::string& getCgiPath() const;
         const std::string& getReturn() const;

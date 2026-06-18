@@ -42,6 +42,7 @@ void CgiHandler::initEnv(const HttpRequest& req, const std::string& scriptPath,
     _env["CONTENT_LENGTH"] = req.getIsChunked() ? "" : req.getHeader("content-length");
     _env["SCRIPT_FILENAME"] = scriptPath;
     _env["SCRIPT_NAME"] = req.getPath();
+    _env["PATH_INFO"] = req.getPath();
     _env["SERVER_PROTOCOL"] = "HTTP/1.0";
     _env["GATEWAY_INTERFACE"] = "CGI/1.1";
     _env["SERVER_SOFTWARE"] = "webserv/1.0";

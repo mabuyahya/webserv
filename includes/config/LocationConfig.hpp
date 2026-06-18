@@ -13,6 +13,8 @@ class LocationConfig {
         std::vector<std::string>            _allowedMethods;
         bool                               _hasUploadDir;
         std::string                         _uploadDir;
+        bool                                _hasClientMaxBodySize;
+        size_t                              _clientMaxBodySize;
         std::string                         _cgiExtension;
         std::string                         _cgiPath;
         std::pair<int , std::string>         _return;
@@ -28,6 +30,7 @@ class LocationConfig {
         void setAutoIndex(bool autoIndex);
         void setAllowedMethods(const std::vector<std::string>& methods);
         void setUploadDir(const std::string& uploadDir);
+        void setClientMaxBodySize(size_t size);
         void setCgiExtension(const std::string& cgiExtension);
         void setCgiPath(const std::string& cgiPath);
         void setReturn(int statusCode, const std::string& url);
@@ -39,6 +42,8 @@ class LocationConfig {
         const std::vector<std::string>& getAllowedMethods() const;
         const std::string& getUploadDir() const;
         bool hasUploadDir() const;
+        bool hasClientMaxBodySize() const;
+        size_t getClientMaxBodySize() const;
         const std::string& getCgiExtension() const;
         const std::string& getCgiPath() const;
         const std::pair<int, std::string>& getReturn() const;
@@ -49,6 +54,7 @@ class LocationConfig {
         void validateCgiExtension(const std::string& extension);
         void validateCgiPath(const std::string& path);
         void validateUploadDir(const std::string& uploadDir);
+        void validateClientMaxBodySize(size_t size);
         void validateRoot(const std::string& root);
         void validateIndex(const std::string& index);
         void validatePath(const std::string& path);

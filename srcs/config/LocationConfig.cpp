@@ -7,6 +7,8 @@ LocationConfig::LocationConfig() : _autoIndex(false) {
     _allowedMethods.clear();
     _uploadDir = "";
     _hasUploadDir = false;
+    _hasClientMaxBodySize = false;
+    _clientMaxBodySize = 0;
     _cgiExtension = "";
     _cgiPath = "";
     _return = std::make_pair(0, "");
@@ -33,6 +35,12 @@ const std::string& LocationConfig::getUploadDir() const {
 }
 bool LocationConfig::hasUploadDir() const {
     return _hasUploadDir;
+}
+bool LocationConfig::hasClientMaxBodySize() const {
+    return _hasClientMaxBodySize;
+}
+size_t LocationConfig::getClientMaxBodySize() const {
+    return _clientMaxBodySize;
 }
 const std::string& LocationConfig::getCgiExtension() const {
     return _cgiExtension;
@@ -68,6 +76,11 @@ void LocationConfig::setUploadDir(const std::string& uploadDir) {
     validateUploadDir(uploadDir);
     _uploadDir = uploadDir;
     _hasUploadDir = true;
+}
+void LocationConfig::setClientMaxBodySize(size_t size) {
+    validateClientMaxBodySize(size);
+    _clientMaxBodySize = size;
+    _hasClientMaxBodySize = true;
 }
 void LocationConfig::setCgiExtension(const std::string& cgiExtension) {
     validateCgiExtension(cgiExtension);
@@ -117,6 +130,11 @@ void LocationConfig::validateCgiPath(const std::string& path) {
 void LocationConfig::validateUploadDir(const std::string& uploadDir) {
     if (uploadDir.empty()) {
         throw std::invalid_argument("Upload directory cannot be empty");
+    }
+}
+void LocationConfig::validateClientMaxBodySize(size_t size) {
+    if (size == 0) {
+        throw std::invalid_argument("Client max body size must be greater than 0");
     }
 }
 

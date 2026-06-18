@@ -49,7 +49,7 @@ static bool safeUploadCharacter(char value) {
         || value == '-';
 }
 
-static const size_t CGI_OUTPUT_LIMIT = 16 * 1024 * 1024;
+static const size_t CGI_OUTPUT_LIMIT = 128 * 1024 * 1024;
 
 static std::string lowerString(const std::string& value) {
     std::string result(value);
@@ -351,12 +351,12 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
         handleUpload(req, location, config);
         return;
     }
-    if (!exists || deleted) {
-        buildErrorPage(404, config);
+    if (!deleted && isCgiTarget(path, location)) {
+        handleCgi(req, path, location, config);
         return;
     }
-    if (isCgiTarget(path, location)) {
-        handleCgi(req, path, location, config);
+    if (!exists || deleted) {
+        buildErrorPage(404, config);
         return;
     }
     if (req.getMethod() == "DELETE") {
@@ -398,7 +398,7 @@ void HttpResponse::generate(const HttpRequest& req, const ServerConfig* config) 
             }
         }
         if (!location->getAutoIndex()) {
-            buildErrorPage(403, config);
+            buildErrorPage(404, config);
             return;
         }
         if (!buildDirectoryListing(req.getPath(), path, config)) {

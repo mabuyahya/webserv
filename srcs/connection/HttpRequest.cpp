@@ -1,6 +1,7 @@
 #include "HttpRequest.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <limits>
 #include <sstream>
 
@@ -67,6 +68,19 @@ static bool decodePath(const std::string& encoded, std::string& decoded) {
         i += 2;
     }
     return true;
+}
+
+static size_t requestBodyLimit(const ServerConfig* config, const std::string& path) {
+    if (config == NULL)
+        return 0;
+    size_t limit = config->getClientMaxBodySize();
+    try {
+        const LocationConfig* location = config->matchLocation(path);
+        if (location->hasClientMaxBodySize())
+            limit = location->getClientMaxBodySize();
+    } catch (const std::exception&) {
+    }
+    return limit;
 }
 
 HttpRequest::HttpRequest(const ServerConfig* config)
@@ -156,13 +170,15 @@ void HttpRequest::parseHeaders() {
         setError(400);
         return;
     }
-    if (_serverConfig != NULL && _contentLength > _serverConfig->getClientMaxBodySize())
-        setError(413);
+    if (_serverConfig != NULL && _contentLength > requestBodyLimit(_serverConfig, _path)) {
+        _errorCode = 413;
+        _state = REQ_BODY_DISCARD;
+    }
 }
 
 bool HttpRequest::appendBody(const char* data, size_t len) {
     if (_serverConfig != NULL
-        && _bodyBytesRead + len > _serverConfig->getClientMaxBodySize()) {
+        && _bodyBytesRead + len > requestBodyLimit(_serverConfig, _path)) {
         setError(413);
         return false;
     }
@@ -178,6 +194,14 @@ void HttpRequest::processNormalBody(const char* data, size_t len) {
         return;
     if (_bodyBytesRead == _contentLength)
         _state = REQ_COMPLETE;
+}
+
+void HttpRequest::processDiscardBody(size_t len) {
+    size_t remaining = _contentLength - _bodyBytesRead;
+    size_t count = std::min(remaining, len);
+    _bodyBytesRead += count;
+    if (_bodyBytesRead == _contentLength)
+        _state = REQ_ERROR;
 }
 
 void HttpRequest::processChunkedData(const char* data, size_t len) {
@@ -196,7 +220,7 @@ void HttpRequest::processChunkedData(const char* data, size_t len) {
                 return;
             }
             if (_serverConfig != NULL
-                && _currentChunkSize > _serverConfig->getClientMaxBodySize() - _bodyBytesRead) {
+                && _currentChunkSize > requestBodyLimit(_serverConfig, _path) - _bodyBytesRead) {
                 setError(413);
                 return;
             }
@@ -213,6 +237,17 @@ void HttpRequest::processChunkedData(const char* data, size_t len) {
                 _state = REQ_COMPLETE;
                 return;
             }
+        }
+        if (_currentChunkSize == 0) {
+            if (_chunkBuffer.size() >= 2 && _chunkBuffer.compare(0, 2, "\r\n") == 0) {
+                _state = REQ_COMPLETE;
+                return;
+            }
+            size_t trailerEnd = _chunkBuffer.find("\r\n\r\n");
+            if (trailerEnd == std::string::npos)
+                return;
+            _state = REQ_COMPLETE;
+            return;
         }
         if (_chunkBuffer.size() < 2 || _currentChunkSize > _chunkBuffer.size() - 2)
             return;
@@ -258,7 +293,11 @@ void HttpRequest::feedData(const char* buffer, size_t length) {
         size_t bodyStart = headerEnd + 4;
         std::string leftover = _rawHeaders.substr(bodyStart);
         _rawHeaders.resize(bodyStart);
-        if (_isChunked)
+        if (_state == REQ_BODY_DISCARD) {
+            if (!leftover.empty())
+                processDiscardBody(leftover.size());
+            return;
+        } else if (_isChunked)
             _state = REQ_BODY_CHUNKED;
         else if (_contentLength > 0)
             _state = REQ_BODY_NORMAL;
@@ -274,6 +313,8 @@ void HttpRequest::feedData(const char* buffer, size_t length) {
         }
     } else if (_state == REQ_BODY_CHUNKED)
         processChunkedData(buffer, length);
+    else if (_state == REQ_BODY_DISCARD)
+        processDiscardBody(length);
     else if (_state == REQ_BODY_NORMAL)
         processNormalBody(buffer, length);
 }

@@ -7,6 +7,7 @@ locationDirectives::locationDirectives() {
     _autoIndex = "";
     _allowedMethods = "";
     _uploadDir = "";
+    _clientMaxBodySize = "";
     _cgiExtension = "";
     _cgiPath = "";
 }
@@ -28,6 +29,9 @@ void locationDirectives::setAllowedMethods(const std::string& allowedMethods) {
 }
 void locationDirectives::setUploadDir(const std::string& uploadDir) {
     _uploadDir = uploadDir;
+}
+void locationDirectives::setClientMaxBodySize(const std::string& clientMaxBodySize) {
+    _clientMaxBodySize = clientMaxBodySize;
 }
 void locationDirectives::setCgiExtension(const std::string& cgiExtension) {
     _cgiExtension = cgiExtension;
@@ -55,6 +59,9 @@ const std::string& locationDirectives::getAllowedMethods() const {
 }
 const std::string& locationDirectives::getUploadDir() const {   
     return _uploadDir;
+}
+const std::string& locationDirectives::getClientMaxBodySize() const {
+    return _clientMaxBodySize;
 }
 const std::string& locationDirectives::getCgiExtension() const {
     return _cgiExtension;

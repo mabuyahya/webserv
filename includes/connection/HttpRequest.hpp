@@ -9,6 +9,7 @@ enum RequestState {
     REQ_HEADERS,
     REQ_BODY_NORMAL,
     REQ_BODY_CHUNKED,
+    REQ_BODY_DISCARD,
     REQ_ERROR,
     REQ_COMPLETE
 };
@@ -39,6 +40,7 @@ private:
     void    parseHeaders();
     void    processNormalBody(const char* data, size_t len);
     void    processChunkedData(const char* data, size_t len);
+    void    processDiscardBody(size_t len);
     bool    appendBody(const char* data, size_t len);
 
 public:

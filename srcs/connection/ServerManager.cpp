@@ -127,20 +127,22 @@ void ServerManager::setupServers(const std::vector<ServerConfig>& configs) {
 }
 
 void ServerManager::acceptNewConnection(int serverFd) {
-    struct sockaddr_storage address;
-    socklen_t length = sizeof(address);
-    int clientFd = accept(serverFd, reinterpret_cast<struct sockaddr*>(&address), &length);
-    if (clientFd == -1)
-        return;
-    if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) {
-        close(clientFd);
-        return;
-    }
-    fcntl(clientFd, F_SETFD, FD_CLOEXEC);
-    _clients.insert(std::make_pair(clientFd, Client(clientFd, &_listeningSockets[serverFd])));
-    if (!addToEpoll(clientFd, EPOLLIN | EPOLLRDHUP)) {
-        close(clientFd);
-        _clients.erase(clientFd);
+    while (true) {
+        struct sockaddr_storage address;
+        socklen_t length = sizeof(address);
+        int clientFd = accept(serverFd, reinterpret_cast<struct sockaddr*>(&address), &length);
+        if (clientFd == -1)
+            return;
+        if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) {
+            close(clientFd);
+            continue;
+        }
+        fcntl(clientFd, F_SETFD, FD_CLOEXEC);
+        _clients.insert(std::make_pair(clientFd, Client(clientFd, &_listeningSockets[serverFd])));
+        if (!addToEpoll(clientFd, EPOLLIN | EPOLLRDHUP)) {
+            close(clientFd);
+            _clients.erase(clientFd);
+        }
     }
 }
 
@@ -223,7 +225,7 @@ void ServerManager::handleCgiWrite(int pipeFd) {
     size_t count = std::min(body.size() - offset, static_cast<size_t>(4096));
     ssize_t written = write(pipeFd, &body[offset], count);
     if (written < 0) {
-        failCgiClient(found->first);
+        closeCgiPipe(pipeFd);
         return;
     }
     if (written > 0)
@@ -341,6 +343,8 @@ void ServerManager::run() {
                     && client->second.getResponse().getCgiReadFd() == fd;
                 if (isReadPipe && (events & (EPOLLIN | EPOLLHUP)))
                     handleCgiRead(fd);
+                else if (!isReadPipe && (events & (EPOLLHUP | EPOLLERR)))
+                    closeCgiPipe(fd);
                 else if (events & (EPOLLHUP | EPOLLERR)) {
                     failCgiClient(clientFd);
                 } else if (events & EPOLLOUT)
@@ -362,6 +366,11 @@ void ServerManager::run() {
                 modifyEpoll(fd, EPOLLOUT);
             }
         }
-        checkTimeouts();
+        if (count == 0)
+            checkTimeouts();
+        else {
+            while (waitpid(-1, NULL, WNOHANG) > 0) {
+            }
+        }
     }
 }
