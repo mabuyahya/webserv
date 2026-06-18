@@ -1,6 +1,5 @@
 #include "ServerManager.hpp"
 
-#include <cerrno>
 #include <csignal>
 #include <fcntl.h>
 #include <iostream>
@@ -16,6 +15,18 @@ static volatile sig_atomic_t gRunning = 1;
 static void stopServer(int signalNumber) {
     (void)signalNumber;
     gRunning = 0;
+}
+
+static void killAndReapChild(pid_t pid) {
+    if (pid <= 0)
+        return;
+    kill(pid, SIGKILL);
+    for (int attempts = 0; attempts < 100; ++attempts) {
+        pid_t result = waitpid(pid, NULL, WNOHANG);
+        if (result != 0)
+            break;
+        usleep(10000);
+    }
 }
 
 ServerManager::ServerManager(const std::vector<ServerConfig>& configs) : _epollFd(-1) {
@@ -36,7 +47,7 @@ ServerManager::~ServerManager() {
         close(it->first);
     for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
         if (it->second.getResponse().isCgiRunning())
-            kill(it->second.getResponse().getCgiPid(), SIGKILL);
+            killAndReapChild(it->second.getResponse().getCgiPid());
         close(it->first);
     }
     for (std::map<int, ServerConfig>::iterator it = _listeningSockets.begin();
@@ -149,8 +160,10 @@ void ServerManager::acceptNewConnection(int serverFd) {
 void ServerManager::handleClientRead(int clientFd) {
     char buffer[16384];
     ssize_t count = recv(clientFd, buffer, sizeof(buffer), 0);
-    if (count < 0)
+    if (count < 0) {
+        removeClient(clientFd);
         return;
+    }
     if (count == 0) {
         std::map<int, Client>::iterator found = _clients.find(clientFd);
         if (found != _clients.end()) {
@@ -261,8 +274,7 @@ void ServerManager::handleCgiRead(int pipeFd) {
     closeCgiPipe(pipeFd);
     pid_t cgiPid = found->second.getResponse().getCgiPid();
     if (waitpid(cgiPid, NULL, WNOHANG) == 0) {
-        kill(cgiPid, SIGKILL);
-        waitpid(cgiPid, NULL, WNOHANG);
+        killAndReapChild(cgiPid);
     }
     found->second.getResponse().finishCgi(found->second.getServerConfig());
     if (!addToEpoll(clientFd, EPOLLOUT | EPOLLRDHUP))
@@ -283,7 +295,7 @@ void ServerManager::removeClient(int clientFd) {
             ++it;
     }
     if (cgiPid > 0 && client->second.getResponse().isCgiRunning())
-        kill(cgiPid, SIGKILL);
+        killAndReapChild(cgiPid);
     removeFromEpoll(clientFd);
     close(clientFd);
     _clients.erase(client);
@@ -303,8 +315,7 @@ void ServerManager::failCgiClient(int clientFd) {
             ++it;
     }
     if (cgiPid > 0)
-        kill(cgiPid, SIGKILL);
-    waitpid(cgiPid, NULL, WNOHANG);
+        killAndReapChild(cgiPid);
     client->second.getResponse().failCgi(client->second.getServerConfig());
     if (!addToEpoll(clientFd, EPOLLOUT | EPOLLRDHUP))
         removeClient(clientFd);
@@ -326,6 +337,8 @@ void ServerManager::run() {
     while (gRunning) {
         int count = epoll_wait(_epollFd, _events, MAX_EVENTS, 1000);
         if (count < 0) {
+            if (!gRunning)
+                break;
             throw std::runtime_error("epoll_wait failed");
         }
         for (int i = 0; i < count; ++i) {

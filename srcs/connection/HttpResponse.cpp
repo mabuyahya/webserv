@@ -26,7 +26,7 @@ static std::string statusText(int code) {
         case 403: return "403 Forbidden";
         case 404: return "404 Not Found";
         case 405: return "405 Method Not Allowed";
-        case 413: return "413 Payload Too Large";
+        case 413: return "413 Content Too Large";
         case 414: return "414 URI Too Long";
         case 431: return "431 Request Header Fields Too Large";
         case 500: return "500 Internal Server Error";
